@@ -3,7 +3,7 @@ import { sign, verify } from 'hono/jwt';
 const algorithm = 'HS256';
 
 const secret = process.env.JWT_SECRET as string
-console.log("SECRET:", secret);
+// console.log("SECRET:", secret);
 
 export const generateToken = async (
   payload: any,

@@ -14,7 +14,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
   // const token = auth.replace('Bearer ', '');
   const token = auth.replace(/^Bearer\s+/i, '').trim();
   try {
-    const blacklisted = await prisma.tokenBlacklisted.findUnique({
+    const blacklisted = await prisma.blacklistedToken.findUnique({
       where: { token },
     });
 

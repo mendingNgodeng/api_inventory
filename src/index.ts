@@ -4,6 +4,7 @@ import assetCtg from './routes/assetCategory.route';
 import assetTypes from './routes/assetTypes.route';
 import location from './routes/location.route';
 import user from './routes/user.route';
+import rentalCustomer from './routes/rentalCustomer.route';
 
 import { cors } from 'hono/cors';
 const app = new Hono();
@@ -26,6 +27,8 @@ app.route('/assetCtg', assetCtg);
 app.route('/assetTypes', assetTypes);
 app.route('/location', location);
 app.route('/user', user);
+app.route('/rentalCustomer', rentalCustomer);
+
 
 
 export default app;
