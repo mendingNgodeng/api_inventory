@@ -1,0 +1,210 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum adminRole {
+  ADMIN
+}
+
+model Admin {
+  id_admin   Int      @id @default(autoincrement())
+  username   String   @unique
+  password   String
+  role       adminRole
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  asset_logs AssetLogs[]
+}
+// master
+model User {
+  id_user    Int      @id @default(autoincrement())
+  name       String
+  jabatan    String?
+  no_hp      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  borrowed_assets AssetBorrowed[]
+  asset_logs     AssetLogs[]
+}
+
+model AssetCategories {
+  id_asset_categories Int @id @default(autoincrement())
+  name        String
+  description String?
+
+  assets Asset[]
+}
+
+model AssetTypes {
+  id_asset_types Int @id @default(autoincrement())
+  name        String
+  description String?
+
+  assets Asset[]
+}
+
+model Asset {
+  id_assets           Int @id @default(autoincrement())
+  id_asset_categories Int
+  id_asset_types      Int
+  asset_code          String
+  asset_name          String
+  purchase_price      Float
+  rental_price        Float?
+  is_rentable         Boolean @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  category AssetCategories @relation(fields: [id_asset_categories], references: [id_asset_categories])
+  type     AssetTypes      @relation(fields: [id_asset_types], references: [id_asset_types])
+
+  stocks       AssetStock[]
+  rentals      AssetRental[]
+  borrowed     AssetBorrowed[]
+  logs         AssetLogs[]
+  maintenance  AssetMaintenance[]
+}
+
+enum AssetCondition {
+  BAIK
+  RUSAK
+  MAINTENANCE
+}
+
+enum AssetStockStatus {
+  TERSEDIA
+  TIDAK_TERSEDIA
+  DIPINJAM
+  DISEWA
+}
+
+
+model AssetStock {
+  id_asset_stock Int @id @default(autoincrement())
+  id_asset       Int
+  id_location    Int
+
+  condition AssetCondition
+  status    AssetStockStatus
+  quantity  Int
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  asset    Asset    @relation(fields: [id_asset], references: [id_assets])
+  location Location @relation(fields: [id_location], references: [id_location])
+
+
+  borrowed     AssetBorrowed[]      // this
+  maintenance  AssetMaintenance[]   // DAN this
+  @@unique([id_asset, id_location, condition, status])
+}
+
+
+model Location {
+  id_location Int @id @default(autoincrement())
+  name        String
+  description String?
+
+  stocks       AssetStock[]
+}
+
+enum BorrowStatus {
+  DIPINJAM
+  DIKEMBALIKAN
+  TERLAMBAT
+}
+
+model AssetBorrowed {
+  id_asset_borrowed Int @id @default(autoincrement())
+  id_asset          Int
+  id_asset_stock    Int
+  id_user           Int
+  quantity          Int
+  borrowed_date     DateTime
+  returned_date     DateTime?
+  status            BorrowStatus
+
+  assetStock AssetStock @relation(fields: [id_asset_stock], references: [id_asset_stock])
+  asset Asset @relation(fields: [id_asset], references: [id_assets])
+  user  User  @relation(fields: [id_user], references: [id_user])
+
+}
+
+model RentalCustomer {
+  id_rental_customer Int @id @default(autoincrement())
+  name    String
+  phone   String
+  email   String?
+  address String?
+  created_at DateTime @default(now())
+
+  rentals AssetRental[]
+}
+enum RentalStatus {
+  AKTIF
+  SELESAI
+  DIBATALKAN
+}
+
+model AssetRental {
+  id_asset_rental     Int @id @default(autoincrement())
+  id_assets           Int
+  id_rental_customer  Int
+  quantity            Int
+  rental_start        DateTime
+  rental_end          DateTime
+  total_price         Float
+  status              RentalStatus
+
+  asset    Asset          @relation(fields: [id_assets], references: [id_assets])
+  customer RentalCustomer @relation(fields: [id_rental_customer], references: [id_rental_customer])
+}
+
+model AssetLogs {
+  id_asset_logs Int @id @default(autoincrement())
+  id_admin      Int
+  id_asset      Int?
+  id_user       Int?
+  action        String
+  description   String?
+  created_at    DateTime @default(now())
+
+  admin Admin @relation(fields: [id_admin], references: [id_admin])
+  asset Asset? @relation(fields: [id_asset], references: [id_assets])
+  user  User? @relation(fields: [id_user], references: [id_user])
+}
+
+model AssetMaintenance {
+  id_asset_logs    Int @id @default(autoincrement())
+  id_asset         Int
+  id_asset_stock   Int
+  maintenance_date DateTime
+  description      String?
+  cost             Float
+  updated_at       DateTime @updatedAt
+
+  assetStock AssetStock @relation(fields: [id_asset_stock], references: [id_asset_stock])
+  asset Asset @relation(fields: [id_asset], references: [id_assets])
+}
+
+model BlacklistedToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  expiredAt DateTime
+  createdAt DateTime @default(now())
+}
+
