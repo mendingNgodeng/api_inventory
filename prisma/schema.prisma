@@ -60,7 +60,7 @@ model Asset {
   id_assets           Int @id @default(autoincrement())
   id_asset_categories Int
   id_asset_types      Int
-  asset_code          String
+  asset_code          String  @unique
   asset_name          String
   purchase_price      Float
   rental_price        Float?
