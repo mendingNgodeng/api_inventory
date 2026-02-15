@@ -1,6 +1,4 @@
-// revisi
-
-
+//unused
 generator client {
   provider = "prisma-client-js"
 }
@@ -22,6 +20,7 @@ model Admin {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  asset_logs AssetLogs[]
 }
 // master
 model User {
@@ -33,7 +32,7 @@ model User {
   updated_at DateTime @updatedAt
 
   borrowed_assets AssetBorrowed[]
-  //asset_logs     AssetLogs[]
+  asset_logs     AssetLogs[]
 }
 
 model AssetCategories {
@@ -69,7 +68,7 @@ model Asset {
   stocks       AssetStock[]
   rentals      AssetRental[]
   borrowed     AssetBorrowed[]
-  //logs         AssetLogs[]
+  logs         AssetLogs[]
   maintenance  AssetMaintenance[]
 }
 
@@ -83,7 +82,6 @@ enum AssetStockStatus {
   TERSEDIA
   TIDAK_TERSEDIA
   DIPINJAM
-  DIPAKAI
   DISEWA
 }
 
@@ -124,7 +122,7 @@ enum BorrowStatus {
   DIKEMBALIKAN
   TERLAMBAT
 }
-//asset assignment
+
 model AssetBorrowed {
   id_asset_borrowed Int @id @default(autoincrement())
   id_asset          Int
@@ -155,7 +153,6 @@ model RentalCustomer {
 enum RentalStatus {
   AKTIF
   SELESAI
-  DIBATALKAN
 }
 
 model AssetRental {
@@ -171,23 +168,23 @@ model AssetRental {
   asset    Asset          @relation(fields: [id_assets], references: [id_assets])
   customer RentalCustomer @relation(fields: [id_rental_customer], references: [id_rental_customer])
 }
-//history purpose
+
 model AssetLogs {
   id_asset_logs Int @id @default(autoincrement())
-  //id_admin      Int?
-  //id_asset      Int?
-  //id_user       Int?
+  id_admin      Int?
+  id_asset      Int?
+  id_user       Int?
   action        String
   description   String?
   created_at    DateTime @default(now())
 
- // admin Admin @relation(fields: [id_admin], references: [id_admin])
-  //asset Asset? @relation(fields: [id_asset], references: [id_assets])
-  //user  User? @relation(fields: [id_user], references: [id_user])
+  admin Admin @relation(fields: [id_admin], references: [id_admin])
+  asset Asset? @relation(fields: [id_asset], references: [id_assets])
+  user  User? @relation(fields: [id_user], references: [id_user])
 }
 
 model AssetMaintenance {
-  id_asset_maintenance    Int @id @default(autoincrement())
+  id_asset_logs    Int @id @default(autoincrement())
   id_asset         Int
   id_asset_stock   Int
   maintenance_date DateTime

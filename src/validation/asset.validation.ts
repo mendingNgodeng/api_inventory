@@ -14,6 +14,20 @@ export const Schema = z.object({
   asset_name: z.string().min(1, "tidak boleh kosong"),
   is_rentable:z.boolean()
 });
+// later
+async function validateAssetTypeId(id: number) {
+  const assetType = await prisma.assetTypes.findUnique({
+    where: { id_asset_types: id }
+  });
+  return !!assetType;
+}
+
+async function validateAssetCategoryId(id: number) {
+  const assetCategory = await prisma.assetCategories.findUnique({
+    where: { id_asset_categories: id }
+  });
+  return !!assetCategory;
+}
 
 //  unique asset_code
 export async function validateUniqueAssetCode(assetCode: string, excludeId?: number) {
@@ -38,7 +52,7 @@ export const CreateAssetSchema = Schema.superRefine(async (data, ctx) => {
       path: ['asset_code']
     });
   }
-  });
+});
 
 // Update
 export const UpdateAssetSchema = (id: number) => 
