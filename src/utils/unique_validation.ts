@@ -1,7 +1,7 @@
 import { prisma } from "../utils/prisma";
 
 type ValidateUniqueParams = {
-  model: any; // prisma model
+  model: any; // model database
   field: string;
   value: any;
   excludeField?: string;

@@ -132,7 +132,7 @@ model AssetBorrowed {
   id_asset_stock    Int
   id_user           Int
   quantity          Int
-  borrowed_date     DateTime
+  borrowed_date     DateTime  @default(now())
   returned_date     DateTime?
   status            BorrowStatus
 

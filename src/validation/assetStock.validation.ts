@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {prisma} from "../utils/prisma"
+import { validateUnique } from '../utils/unique_validation';
 
 export const Schema = z.object({
   id_asset: z
@@ -20,29 +21,37 @@ export const Schema = z.object({
     // .enum(["TERSEDIA", "TIDAK_TERSEDIA", "DIPINJAM","DIPAKAI","DISEWA"]),
 });
 
-// later
-// async function validateAssetTypeId(id: number) {
-//   const assetType = await prisma.assetTypes.findUnique({
-//     where: { id_asset_types: id }
-//   });
-//   return !!assetType;
-// }
+export const CreateAssetSchema = Schema.superRefine(async (data, ctx) => {
+  const isUnique = await validateUnique({
+    model: prisma.assetStock,
+    field: "id_asset",
+    value: data.id_asset
+  });
 
-// async function validateAssetCategoryId(id: number) {
-//   const assetCategory = await prisma.assetCategories.findUnique({
-//     where: { id_asset_categories: id }
-//   });
-//   return !!assetCategory;
-// }
+  if (!isUnique) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Asset ini sudah terdaftar dalam stock",
+      path: ["id_asset"]
+    });
+  }
+});
 
-//  unique asset_code
-export async function validateUniqueAssetCode(assetCode: string, excludeId?: number) {
-  const existing = await prisma.asset.findFirst({
-    where: {
-      asset_code: assetCode,
-      ...(excludeId ? { NOT: { id_assets: excludeId } } : {})
+export const UpdateAssetSchema = (id: number) =>
+  Schema.superRefine(async (data, ctx) => {
+    const isUnique = await validateUnique({
+      model: prisma.assetStock,
+      field: "id_assets",
+      value: data.id_asset,
+      excludeField: "id_asset_stock",
+      excludeId: id
+    });
+
+    if (!isUnique) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Asset code sudah digunakan",
+        path: ["id_assets"]
+      });
     }
   });
-  
-  return !existing;
-}
