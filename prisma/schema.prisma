@@ -106,6 +106,7 @@ model AssetStock {
 
   borrowed     AssetBorrowed[]      // this
   maintenance  AssetMaintenance[]   // DAN this
+  rentals      AssetRental[]
   @@unique([id_asset, id_location, condition, status])
 }
 
@@ -162,6 +163,7 @@ model AssetRental {
   id_asset_rental     Int @id @default(autoincrement())
   id_assets           Int
   id_rental_customer  Int
+  id_asset_stock      Int
   quantity            Int
   rental_start        DateTime
   rental_end          DateTime
@@ -169,6 +171,7 @@ model AssetRental {
   status              RentalStatus
 
   asset    Asset          @relation(fields: [id_assets], references: [id_assets])
+  assetStock AssetStock     @relation(fields: [id_asset_stock], references: [id_asset_stock]) // WAJIB
   customer RentalCustomer @relation(fields: [id_rental_customer], references: [id_rental_customer])
 }
 //history purpose

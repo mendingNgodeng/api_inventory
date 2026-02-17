@@ -5,7 +5,7 @@ import assetTypes from './routes/assetTypes.route';
 import location from './routes/location.route';
 import user from './routes/user.route';
 import asset from './routes/asset.route';
-
+import assetStock from './routes/assetStock.route';
 import rentalCustomer from './routes/rentalCustomer.route';
 
 import { cors } from 'hono/cors';
@@ -31,6 +31,8 @@ app.route('/location', location);
 app.route('/asset', asset);
 app.route('/user', user);
 app.route('/rentalCustomer', rentalCustomer);
+app.route('/assetStock', assetStock);
+
 
 
 

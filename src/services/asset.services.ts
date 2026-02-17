@@ -16,7 +16,7 @@ export class assetService {
     id_asset_categories: number;
     id_asset_types: number;
     purchase_price: number;
-    rental_price?: number;
+    //rental_price?: number;
     asset_code:string;
     asset_name: string;
     is_rentable:boolean;
@@ -30,7 +30,7 @@ export class assetService {
     id_asset_categories: number;
     id_asset_types: number;
     purchase_price: number;
-    rental_price?: number;
+    //rental_price?: number;
     asset_code:string;
     asset_name: string;
     is_rentable:boolean;
