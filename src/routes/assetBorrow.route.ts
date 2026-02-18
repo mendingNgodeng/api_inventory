@@ -19,10 +19,27 @@ assetBorrow.post(
   assetBorrowController.create
 );
 
+assetBorrow.post(
+  '/used',
+  assetBorrowController.createUsed
+);
+
+
+assetBorrow.post(
+  '/borrow',
+  assetBorrowController.createBorrow
+);
+
 assetBorrow.put(
   '/:id',
   assetBorrowController.update
 );
+
+assetBorrow.put(
+  '/:id/return',
+  assetBorrowController.returnAsset
+);
+
 
 assetBorrow.delete(
   '/:id',

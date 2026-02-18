@@ -68,7 +68,6 @@ model Asset {
 
   stocks       AssetStock[]
   rentals      AssetRental[]
-  borrowed     AssetBorrowed[]
   //logs         AssetLogs[]
   maintenance  AssetMaintenance[]
 }
@@ -128,17 +127,15 @@ enum BorrowStatus {
 //asset assignment
 model AssetBorrowed {
   id_asset_borrowed Int @id @default(autoincrement())
-  id_asset          Int
   id_asset_stock    Int
-  id_user           Int
+  id_user           Int?
   quantity          Int
   borrowed_date     DateTime  @default(now())
   returned_date     DateTime  @updatedAt
   status            BorrowStatus
 
   assetStock AssetStock @relation(fields: [id_asset_stock], references: [id_asset_stock])
-  asset Asset @relation(fields: [id_asset], references: [id_assets])
-  user  User  @relation(fields: [id_user], references: [id_user])
+  user  User?  @relation(fields: [id_user], references: [id_user])
 
 }
 
@@ -171,7 +168,7 @@ model AssetRental {
   status              RentalStatus
 
   asset    Asset          @relation(fields: [id_assets], references: [id_assets])
-  assetStock AssetStock     @relation(fields: [id_asset_stock], references: [id_asset_stock]) // WAJIB
+  assetStock AssetStock     @relation(fields: [id_asset_stock], references: [id_asset_stock])
   customer RentalCustomer @relation(fields: [id_rental_customer], references: [id_rental_customer])
 }
 //history purpose
