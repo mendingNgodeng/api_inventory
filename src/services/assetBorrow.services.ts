@@ -78,10 +78,16 @@ static async getAll() {
       throw new Error("Stock tidak mencukupi");
     }
 
+    const newQuantity = stock.quantity - input.quantity;
+
+    const newStatus =
+      newQuantity > 0 ? "TERSEDIA" : "TIDAK_TERSEDIA";
+
     await tx.assetStock.update({
       where: { id_asset_stock: input.id_asset_stock },
       data: {
-        quantity: { decrement: input.quantity }
+        quantity: newQuantity,
+        status: newStatus
       }
     });
 
@@ -99,6 +105,7 @@ static async getAll() {
 
 
 
+
 // Pengembaian
 static async returnAsset(id: number) {
   return prisma.$transaction(async (tx) => {
@@ -111,23 +118,38 @@ static async returnAsset(id: number) {
       throw new Error("Data tidak ditemukan");
     }
 
-    if (borrow.status !== "DIPINJAM" && borrow.status !== "DIPAKAI") {
+    if (borrow.status === "DIKEMBALIKAN") {
       throw new Error("Asset sudah dikembalikan");
     }
+
+    // Ambil stock sekarang
+    const stock = await tx.assetStock.findUnique({
+      where: { id_asset_stock: borrow.id_asset_stock }
+    });
+
+    if (!stock) {
+      throw new Error("Stock tidak ditemukan");
+    }
+
+    const newQuantity = stock.quantity + borrow.quantity;
+
+    const newStatus = newQuantity > 0
+      ? "TERSEDIA"
+      : "TIDAK_TERSEDIA";
 
     await tx.assetStock.update({
       where: { id_asset_stock: borrow.id_asset_stock },
       data: {
-        quantity: {
-          increment: borrow.quantity
-        }
+        quantity: newQuantity,
+        status: newStatus
       }
     });
 
     return tx.assetBorrowed.update({
       where: { id_asset_borrowed: id },
       data: {
-        status: "DIKEMBALIKAN"
+        status: "DIKEMBALIKAN",
+        returned_date: new Date()
       }
     });
   });

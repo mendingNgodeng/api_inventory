@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import { assetStockService } from '../services/assetStock.services';
-import { Schema,CreateAssetSchema,UpdateAssetSchema } from '../validation/assetStock.validation';
+import { Schema } from '../validation/assetStock.validation';
 
 export class assetStockController {
 
@@ -58,7 +58,7 @@ export class assetStockController {
   static async create(c: Context) {
     try {
       const body = await c.req.json();
-      const result = await CreateAssetSchema.safeParseAsync(body);
+      const result = await Schema.safeParseAsync(body);
 
       if (!result.success) {
         return c.json({
@@ -94,9 +94,7 @@ export class assetStockController {
         }
   
         const body = await c.req.json();
-        const result = await UpdateAssetSchema(numericId).safeParseAsync(body);;
-        
-
+        const result = Schema.safeParse(body);
 
         if (!result.success) {
           return c.json({

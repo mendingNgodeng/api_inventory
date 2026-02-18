@@ -16,42 +16,42 @@ export const Schema = z.object({
     .int("harus bilangan bulat")
     .nonnegative("tidak boleh negatif"),
   condition: z
-    .enum(["BAIK", "RUSAK", "MAINTENANCE"]),
+    .enum(["BAIK", "RUSAK"]),
   // status: z
     // .enum(["TERSEDIA", "TIDAK_TERSEDIA", "DIPINJAM","DIPAKAI","DISEWA"]),
 });
 
-export const CreateAssetSchema = Schema.superRefine(async (data, ctx) => {
-  const isUnique = await validateUnique({
-    model: prisma.assetStock,
-    field: "id_asset",
-    value: data.id_asset
-  });
+// export const CreateAssetSchema = Schema.superRefine(async (data, ctx) => {
+//   const isUnique = await validateUnique({
+//     model: prisma.assetStock,
+//     field: "id_asset",
+//     value: data.id_asset
+//   });
 
-  if (!isUnique) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Asset ini sudah terdaftar dalam stock",
-      path: ["id_asset"]
-    });
-  }
-});
+//   if (!isUnique) {
+//     ctx.addIssue({
+//       code: z.ZodIssueCode.custom,
+//       message: "Asset ini sudah terdaftar dalam stock",
+//       path: ["id_asset"]
+//     });
+//   }
+// });
 
-export const UpdateAssetSchema = (id: number) =>
-  Schema.superRefine(async (data, ctx) => {
-    const isUnique = await validateUnique({
-      model: prisma.assetStock,
-      field: "id_assets",
-      value: data.id_asset,
-      excludeField: "id_asset_stock",
-      excludeId: id
-    });
+// export const UpdateAssetSchema = (id: number) =>
+//   Schema.superRefine(async (data, ctx) => {
+//     const isUnique = await validateUnique({
+//       model: prisma.assetStock,
+//       field: "id_assets",
+//       value: data.id_asset,
+//       excludeField: "id_asset_stock",
+//       excludeId: id
+//     });
 
-    if (!isUnique) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Asset code sudah digunakan",
-        path: ["id_assets"]
-      });
-    }
-  });
+//     if (!isUnique) {
+//       ctx.addIssue({
+//         code: z.ZodIssueCode.custom,
+//         message: "Asset code sudah digunakan",
+//         path: ["id_assets"]
+//       });
+//     }
+//   });

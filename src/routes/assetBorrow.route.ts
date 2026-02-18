@@ -14,10 +14,10 @@ assetBorrow.get(
   assetBorrowController.get
 );
 
-assetBorrow.post(
-  '/',
-  assetBorrowController.create
-);
+// assetBorrow.post(
+//   '/',
+//   assetBorrowController.create
+// );
 
 assetBorrow.post(
   '/used',
@@ -30,10 +30,10 @@ assetBorrow.post(
   assetBorrowController.createBorrow
 );
 
-assetBorrow.put(
-  '/:id',
-  assetBorrowController.update
-);
+// assetBorrow.put(
+//   '/:id',
+//   assetBorrowController.update
+// );
 
 assetBorrow.put(
   '/:id/return',

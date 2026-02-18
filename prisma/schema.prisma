@@ -69,22 +69,23 @@ model Asset {
   stocks       AssetStock[]
   rentals      AssetRental[]
   //logs         AssetLogs[]
-  maintenance  AssetMaintenance[]
+
 }
 
 enum AssetCondition {
   BAIK
   RUSAK
-  MAINTENANCE
 }
 
 enum AssetStockStatus {
   TERSEDIA
   TIDAK_TERSEDIA
-  DIPINJAM
-  DIPAKAI
-  DISEWA
+  MAINTENANCE
 }
+//was on stockStatus 
+  //DIPINJAM
+  //DIPAKAI
+  //DISEWA
 
 
 model AssetStock {
@@ -186,17 +187,21 @@ model AssetLogs {
   //user  User? @relation(fields: [id_user], references: [id_user])
 }
 
+enum MaintenanceStatus {
+  ON_PROGRESS
+  DONE
+}
+
 model AssetMaintenance {
   id_asset_maintenance    Int @id @default(autoincrement())
-  id_asset         Int
   id_asset_stock   Int
-  maintenance_date DateTime
+  created_at       DateTime @default(now())
   description      String?
-  cost             Float
+  cost             Float?
+  quantity         Int
   updated_at       DateTime @updatedAt
-
+  status           MaintenanceStatus @default(ON_PROGRESS)
   assetStock AssetStock @relation(fields: [id_asset_stock], references: [id_asset_stock])
-  asset Asset @relation(fields: [id_asset], references: [id_assets])
 }
 
 model BlacklistedToken {
