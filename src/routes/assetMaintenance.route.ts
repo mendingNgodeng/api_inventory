@@ -15,7 +15,7 @@ assetMaintenance.get(
 );
 
 assetMaintenance.post(
-  '/used',
+  '/',
   assetMaintenaceController.createMaintenance
 );
 

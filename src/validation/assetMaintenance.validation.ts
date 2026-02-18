@@ -12,7 +12,8 @@ export const Schema = z.object({
   cost: z
     .number()
     .int("harus bilangan bulat")
-    .nonnegative("tidak boleh negatif"),
+    .nonnegative("tidak boleh negatif")
+    .optional(),
   description: z
     .string().optional()
   // returned_data:z

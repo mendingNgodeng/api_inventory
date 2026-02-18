@@ -124,9 +124,6 @@ static async createMaintenance(
 }
 
 
-
-
-
 // Pengembaian
 static async fixedAsset(id: number) {
   return prisma.$transaction(async (tx) => {
@@ -140,42 +137,73 @@ static async fixedAsset(id: number) {
     }
 
     if (maintenance.status === "DONE") {
-      throw new Error("Asset sudah dikembalikan");
+      throw new Error("Asset sudah selesai diperbaiki");
     }
 
-    // Ambil stock sekarang
-    const stock = await tx.assetStock.findUnique({
+    // Ambil stock asal (BAIK)
+    const goodStock = await tx.assetStock.findUnique({
       where: { id_asset_stock: maintenance.id_asset_stock }
     });
 
-    if (!stock) {
-      throw new Error("Stock tidak ditemukan");
+    if (!goodStock) {
+      throw new Error("Stock asal tidak ditemukan");
     }
 
-    const newQuantity = stock.quantity + maintenance.quantity;
-
-    const newStatus = newQuantity > 0
-      ? "TERSEDIA"
-      : "TIDAK_TERSEDIA";
-
-    await tx.assetStock.update({
-      where: { id_asset_stock: maintenance.id_asset_stock },
-      data: {
-        quantity: newQuantity,
-        status: newStatus
+    // Cari stock RUSAK + MAINTENANCE
+    const maintenanceStock = await tx.assetStock.findFirst({
+      where: {
+        id_asset: goodStock.id_asset,
+        id_location: goodStock.id_location,
+        condition: "RUSAK",
+        status: "MAINTENANCE"
       }
     });
 
+    if (!maintenanceStock) {
+      throw new Error("Stock maintenance tidak ditemukan");
+    }
+
+    if (maintenanceStock.quantity < maintenance.quantity) {
+      throw new Error("Quantity maintenance tidak valid");
+    }
+
+    // 1️Kurangi RUSAK + MAINTENANCE
+    const remainingMaintenanceQty =
+      maintenanceStock.quantity - maintenance.quantity;
+
+    if (remainingMaintenanceQty > 0) {
+      await tx.assetStock.update({
+        where: { id_asset_stock: maintenanceStock.id_asset_stock },
+        data: { quantity: remainingMaintenanceQty }
+      });
+    } else {
+      // boleh delete atau set 0
+      await tx.assetStock.delete({
+        where: { id_asset_stock: maintenanceStock.id_asset_stock }
+      });
+    }
+
+    // 2️Tambah kembali ke BAIK + TERSEDIA
+    const newGoodQty = goodStock.quantity + maintenance.quantity;
+
+    await tx.assetStock.update({
+      where: { id_asset_stock: goodStock.id_asset_stock },
+      data: {
+        quantity: newGoodQty,
+        status: "TERSEDIA"
+      }
+    });
+
+    // 3️⃣ Update maintenance status
     return tx.assetMaintenance.update({
       where: { id_asset_maintenance: id },
       data: {
-        status: "DONE",
-        // updated_at: new Date()
+        status: "DONE"
       }
     });
+
   });
 }
-
 
 
   static async update(id: number, input: {
@@ -203,7 +231,7 @@ static async fixedAsset(id: number) {
   }
 
   if (maintenance.status === "ON_PROGRESS") {
-    throw new Error("Tidak bisa menghapus data yang masih dipinjam/dipakai");
+    throw new Error("Tidak bisa menghapus data yang masih maintenance");
   }
 
   return prisma.assetMaintenance.delete({

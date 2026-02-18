@@ -35,7 +35,7 @@ export class assetStockService {
       : AssetStockStatus.TIDAK_TERSEDIA;
 
     return prisma.assetStock.create({
-      data: {...input,status}
+      data: {...input,status,condition:"BAIK"}
     });
   }
 
