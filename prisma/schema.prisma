@@ -133,7 +133,7 @@ model AssetBorrowed {
   id_user           Int
   quantity          Int
   borrowed_date     DateTime  @default(now())
-  returned_date     DateTime?
+  returned_date     DateTime  @updatedAt
   status            BorrowStatus
 
   assetStock AssetStock @relation(fields: [id_asset_stock], references: [id_asset_stock])
