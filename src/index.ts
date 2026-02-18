@@ -8,6 +8,8 @@ import asset from './routes/asset.route';
 import assetStock from './routes/assetStock.route';
 import rentalCustomer from './routes/rentalCustomer.route';
 import assetBorrow from './routes/assetBorrow.route';
+import assetMaintenance from './routes/assetMaintenance.route';
+
 
 
 import { cors } from 'hono/cors';
@@ -35,6 +37,8 @@ app.route('/user', user);
 app.route('/rentalCustomer', rentalCustomer);
 app.route('/assetStock', assetStock);
 app.route('/assetBorrow', assetBorrow);
+app.route('/assetMaintenance', assetMaintenance);
+
 
 
 
