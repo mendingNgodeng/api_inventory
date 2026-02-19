@@ -11,6 +11,7 @@ export class assetStockService {
           {
             asset_code:true,
             asset_name:true,
+            is_rentable:true
           }
       }
       }

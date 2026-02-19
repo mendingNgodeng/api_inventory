@@ -149,7 +149,7 @@ static async fixedAsset(id: number) {
       throw new Error("Stock asal tidak ditemukan");
     }
 
-    // Cari stock RUSAK + MAINTENANCE
+    // Cari stock RUSAK MAINTENANCE
     const maintenanceStock = await tx.assetStock.findFirst({
       where: {
         id_asset: goodStock.id_asset,
