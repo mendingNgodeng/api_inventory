@@ -43,6 +43,35 @@ export class StatisticService {
     .sort((a, b) => b.total_stock - a.total_stock).splice(0,7);
 }
 
+// summary of it all
+static async getDashboardSummary() {
+  const [
+    totalAsset,
+    totalUser,
+    totalCategory,
+    usedAsset
+  ] = await Promise.all([
+    prisma.assetStock.aggregate({
+      _sum: { quantity: true },
+    }),
+    prisma.user.count(),
+    prisma.assetCategories.count(),
+    prisma.assetBorrowed.aggregate({
+      where: { status: "DIPAKAI" },
+      _sum: { quantity: true },
+    }),
+  ]);
+
+  return {
+    total_asset: totalAsset._sum.quantity ?? 0,
+    total_user: totalUser,
+    total_category: totalCategory,
+    total_used_asset: usedAsset._sum.quantity ?? 0,
+  };
+}
+
+
+// not used
 static async totalAsset() {
   const result = await prisma.assetStock.aggregate({
     _sum: {
@@ -77,32 +106,4 @@ static async totalUsedAsset() {
 static async totalCategory(){
  return prisma.assetCategories.count();
 }
-
-// summary of it all
-static async getDashboardSummary() {
-  const [
-    totalAsset,
-    totalUser,
-    totalCategory,
-    usedAsset
-  ] = await Promise.all([
-    prisma.assetStock.aggregate({
-      _sum: { quantity: true },
-    }),
-    prisma.user.count(),
-    prisma.assetCategories.count(),
-    prisma.assetBorrowed.aggregate({
-      where: { status: "DIPAKAI" },
-      _sum: { quantity: true },
-    }),
-  ]);
-
-  return {
-    total_asset: totalAsset._sum.quantity ?? 0,
-    total_user: totalUser,
-    total_category: totalCategory,
-    total_used_asset: usedAsset._sum.quantity ?? 0,
-  };
-}
-
 }

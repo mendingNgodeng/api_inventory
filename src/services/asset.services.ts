@@ -3,7 +3,16 @@ import { prisma } from '../utils/prisma';
 export class assetService {
 
   static async getAll() {
-    return prisma.asset.findMany();
+    return prisma.asset.findMany({
+      include:{
+        type:{
+          select:{name:true}
+        },
+        category:{
+          select:{name:true}
+        }
+      }
+    });
   }
 
   static async getById(id: number) {

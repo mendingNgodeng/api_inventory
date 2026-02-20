@@ -5,11 +5,16 @@ import {prisma} from "../utils/prisma"
 export const Schema = z.object({
   id_asset_types: z
     .number()
-    .min(1, 'tidak boleh kosong'),
+    .int("harus bilangan bulat")
+    .nonnegative("tidak boleh negatif"),
   id_asset_categories: z
     .number()
-    .min(1, 'tidak boleh kosong'),
-  purchase_price: z.number().min(1,"tidak boleh kosong"),
+    .int("harus bilangan bulat")
+    .nonnegative("tidak boleh negatif"),
+  purchase_price:
+    z.number()
+    .int("harus bilangan bulat")
+    .nonnegative("tidak boleh negatif"),
   rental_price: z.number().optional(),
   asset_code: z.string().min(1, "tidak boleh kosong"),
   asset_name: z.string().min(1, "tidak boleh kosong"),
