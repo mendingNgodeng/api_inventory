@@ -10,8 +10,6 @@ export const authMiddleware = async (c: Context, next: Next) => {
   const auth = c.req.header('Authorization');
 
   if (!auth) return c.json({ error: 'Token tidak ada' }, 401);
-
-  // const token = auth.replace('Bearer ', '');
   const token = auth.replace(/^Bearer\s+/i, '').trim();
   try {
     const blacklisted = await prisma.blacklistedToken.findUnique({

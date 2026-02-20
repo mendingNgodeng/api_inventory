@@ -67,9 +67,7 @@ model Asset {
   type     AssetTypes      @relation(fields: [id_asset_types], references: [id_asset_types])
 
   stocks       AssetStock[]
-  rentals      AssetRental[]
   //logs         AssetLogs[]
-
 }
 
 enum AssetCondition {
@@ -146,7 +144,7 @@ model RentalCustomer {
   phone   String?
   email   String?
   address String?
-  fotoKtp String
+ 
   created_at DateTime @default(now())
 
   rentals AssetRental[]
@@ -159,32 +157,24 @@ enum RentalStatus {
 
 model AssetRental {
   id_asset_rental     Int @id @default(autoincrement())
-  id_assets           Int
   id_rental_customer  Int
   id_asset_stock      Int
   quantity            Int
+  fotoKtp            String
   rental_start        DateTime
   rental_end          DateTime
   price               Float
   status              RentalStatus
 
-  asset    Asset          @relation(fields: [id_assets], references: [id_assets])
   assetStock AssetStock     @relation(fields: [id_asset_stock], references: [id_asset_stock])
   customer RentalCustomer @relation(fields: [id_rental_customer], references: [id_rental_customer])
 }
 //history purpose
 model AssetLogs {
   id_asset_logs Int @id @default(autoincrement())
-  //id_admin      Int?
-  //id_asset      Int?
-  //id_user       Int?
   action        String
   description   String?
   created_at    DateTime @default(now())
-
- // admin Admin @relation(fields: [id_admin], references: [id_admin])
-  //asset Asset? @relation(fields: [id_asset], references: [id_assets])
-  //user  User? @relation(fields: [id_user], references: [id_user])
 }
 
 enum MaintenanceStatus {

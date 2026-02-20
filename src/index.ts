@@ -9,6 +9,8 @@ import assetStock from './routes/assetStock.route';
 import rentalCustomer from './routes/rentalCustomer.route';
 import assetBorrow from './routes/assetBorrow.route';
 import assetMaintenance from './routes/assetMaintenance.route';
+import statistic from './routes/statistic.route';
+
 
 
 
@@ -22,7 +24,7 @@ const app = new Hono();
 app.use(
   '/*',
   cors({
-    origin: '*', // nanti bisa diganti 'http://localhost:5173'
+    origin: '*', // nanti bisa diganti 'http://localhost:5173 and what not'
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
   })
@@ -38,10 +40,6 @@ app.route('/rentalCustomer', rentalCustomer);
 app.route('/assetStock', assetStock);
 app.route('/assetBorrow', assetBorrow);
 app.route('/assetMaintenance', assetMaintenance);
-
-
-
-
-
+app.route('/statistic', statistic);
 
 export default app;
