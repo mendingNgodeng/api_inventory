@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { assetStockService } from '../services/assetStock.services';
 import { Schema } from '../validation/assetStock.validation';
+import { Prisma } from "@prisma/client";
 
 export class assetStockController {
 
@@ -71,18 +72,30 @@ export class assetStockController {
       const data = await assetStockService.create(result.data);
 
       return c.json({
+
+        
         success: true,
         message: 'Data berhasil dibuat',
         data
       }, 201);
 
     } catch (error) {
-      return c.json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Internal server error'
-      }, 500);
-    }
+      if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
+    return c.json({
+      success: false,
+      type: "unique_constraint",
+      message: "Stok dengan kombinasi aset, lokasi, kondisi, dan status sudah ada."
+    }, 400);
   }
+
+  return c.json({
+    success: false,
+    message: error instanceof Error ? error.message : 'Internal server error'
+  }, 500);
+  }}
 
   static async update(c: Context) {
       try {
@@ -103,6 +116,7 @@ export class assetStockController {
             errors: result.error.flatten().fieldErrors
           }, 400);
         }
+        
   
         const data = await assetStockService.update(numericId, result.data);
   
@@ -113,6 +127,18 @@ export class assetStockController {
         });
   
       } catch (error) {
+
+        // validasi constraint
+          if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
+    return c.json({
+      success: false,
+      type: "unique_constraint",
+      message: "Data dengan kombinasi ini sudah ada."
+    }, 400);
+  }
         return c.json({
           success: false,
           message: error instanceof Error ? error.message : 'Internal server error'

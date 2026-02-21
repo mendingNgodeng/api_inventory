@@ -30,18 +30,6 @@ static async getAll() {
     });
   }
 
-  // static async create(input: {
-  
-  //   id_user: number;
-  //   id_asset_stock: number;
-  //   quantity:number;
-  //   status:MaintenanceStatus
-  // }) {
-  //   return prisma.assetMaintenance.create({
-  //     data: input
-  //   });
-  // }
-  // pinjam bwang
 static async createMaintenance(
   input: {
     id_asset_stock: number;
@@ -70,7 +58,7 @@ static async createMaintenance(
       throw new Error("Stock tidak mencukupi");
     }
 
-    // 1️⃣ Kurangi stock lama
+    // Kurangi stock lama
     const remainingQty = stock.quantity - input.quantity;
 
     const newStatus =
@@ -194,7 +182,7 @@ static async fixedAsset(id: number) {
       }
     });
 
-    // 3️⃣ Update maintenance status
+    // Update maintenance status
     return tx.assetMaintenance.update({
       where: { id_asset_maintenance: id },
       data: {

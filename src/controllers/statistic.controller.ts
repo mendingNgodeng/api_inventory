@@ -35,7 +35,7 @@ export class statisticController {
       }, 500);
     }
   }
-
+// not used all below
 
    static async totalAsset(c: Context) {
     try {

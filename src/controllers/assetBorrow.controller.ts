@@ -37,7 +37,7 @@ static async createUsed(c: Context) {
 
     const data = await AssetBorrowService.createBorrow(
       result.data,
-      "DIPAKAI"
+      "DIPAKAI","DIPAKAI"
     );
 
     return c.json({
@@ -70,7 +70,7 @@ static async createBorrow(c: Context) {
 
     const data = await AssetBorrowService.createBorrow(
       result.data,
-      "DIPINJAM"
+      "DIPINJAM","DIPINJAM"
     );
 
     return c.json({

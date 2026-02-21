@@ -49,7 +49,8 @@ static async getDashboardSummary() {
     totalAsset,
     totalUser,
     totalCategory,
-    usedAsset
+    usedAsset,
+    maintenanceAsset
   ] = await Promise.all([
     prisma.assetStock.aggregate({
       _sum: { quantity: true },
@@ -60,6 +61,10 @@ static async getDashboardSummary() {
       where: { status: "DIPAKAI" },
       _sum: { quantity: true },
     }),
+    prisma.assetStock.aggregate({
+      where:{status:"MAINTENANCE"},
+      _sum:{quantity:true}
+    })
   ]);
 
   return {
@@ -67,6 +72,7 @@ static async getDashboardSummary() {
     total_user: totalUser,
     total_category: totalCategory,
     total_used_asset: usedAsset._sum.quantity ?? 0,
+    total_maintenance_asset: maintenanceAsset._sum.quantity ?? 0,
   };
 }
 

@@ -1,6 +1,4 @@
 import { z } from 'zod';
-import {prisma} from "../utils/prisma"
-import { validateUnique } from '../utils/unique_validation';
 
 export const Schema = z.object({
   id_asset: z
@@ -15,8 +13,8 @@ export const Schema = z.object({
     .number()
     .int("harus bilangan bulat")
     .nonnegative("tidak boleh negatif"),
-  condition: z
-    .enum(["BAIK", "RUSAK"]),
+  // condition: z
+  //   .enum(["BAIK", "RUSAK"]),
   // status: z
     // .enum(["TERSEDIA", "TIDAK_TERSEDIA", "DIPINJAM","DIPAKAI","DISEWA"]),
 });

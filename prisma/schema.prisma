@@ -79,11 +79,10 @@ enum AssetStockStatus {
   TERSEDIA
   TIDAK_TERSEDIA
   MAINTENANCE
+  DIPINJAM
+  DIPAKAI
+  DISEWA
 }
-//was on stockStatus 
-  //DIPINJAM
-  //DIPAKAI
-  //DISEWA
 
 
 model AssetStock {
