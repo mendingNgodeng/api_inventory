@@ -168,7 +168,7 @@ export class assetStockController {
       return c.json({
         success: false,
         message: error instanceof Error ? error.message : 'Internal server error'
-      }, 500);
+      }, 400);
     }
   }
 }
