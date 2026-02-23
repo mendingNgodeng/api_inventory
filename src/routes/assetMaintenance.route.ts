@@ -19,7 +19,6 @@ assetMaintenance.post(
   assetMaintenaceController.createMaintenance
 );
 
-
 // assetMaintenance.put(
 //   '/:id',
 //   assetMaintenaceController .update
@@ -27,13 +26,13 @@ assetMaintenance.post(
 
 assetMaintenance.put(
   '/:id/return',
-  assetMaintenaceController .returnAsset
+  assetMaintenaceController.returnAsset
 );
 
 
 assetMaintenance.delete(
   '/:id',
-  assetMaintenaceController .delete
+  assetMaintenaceController.delete
 );
 
 export default assetMaintenance;

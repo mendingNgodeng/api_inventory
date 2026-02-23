@@ -195,7 +195,7 @@ static async update(
       );
     }
 
-    // 3) kalau lolos semua validasi, baru delete
+    // lolos semua validasi, delete
     return prisma.assetStock.delete({
       where: { id_asset_stock: id },
     });

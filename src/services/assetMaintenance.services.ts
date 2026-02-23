@@ -34,6 +34,8 @@ static async createMaintenance(
   input: {
     id_asset_stock: number;
     quantity: number;
+    cost: number;
+    description:string;
   }
 ) {
   if (input.quantity <= 0) {
@@ -165,7 +167,7 @@ static async fixedAsset(id: number) {
         data: { quantity: remainingMaintenanceQty }
       });
     } else {
-      // boleh delete atau set 0
+      //  delete row rusak maintenance dari 
       await tx.assetStock.delete({
         where: { id_asset_stock: maintenanceStock.id_asset_stock }
       });
@@ -181,7 +183,6 @@ static async fixedAsset(id: number) {
         status: "TERSEDIA"
       }
     });
-
     // Update maintenance status
     return tx.assetMaintenance.update({
       where: { id_asset_maintenance: id },
@@ -195,7 +196,6 @@ static async fixedAsset(id: number) {
 
 
   static async update(id: number, input: {
-  
     id_user: number;
     id_asset_stock: number;
     quantity:number;

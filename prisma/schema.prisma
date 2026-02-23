@@ -104,7 +104,9 @@ model AssetStock {
   borrowed     AssetBorrowed[]      // this
   maintenance  AssetMaintenance[]   // DAN this
   rentals      AssetRental[]
-  @@unique([id_asset, id_location, condition, status])
+  @@unique([id_asset, id_location,condition,status])
+  // @@unique([id_asset, id_location, condition, status])
+
 }
 
 
