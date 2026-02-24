@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import { rentalCustomerService } from '../services/rentalCustomer.services';
-import { Schema } from '../validation/rentalCustomer.validation';
+import { Schema ,UpdateSchema} from '../validation/rentalCustomer.validation';
 
 export class rentalCustomerController {
 
@@ -94,7 +94,7 @@ export class rentalCustomerController {
         }
   
         const body = await c.req.json();
-        const result = Schema.safeParse(body);
+        const result = UpdateSchema.safeParse(body);
   
         if (!result.success) {
           return c.json({

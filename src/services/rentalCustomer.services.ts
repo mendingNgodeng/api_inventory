@@ -1,9 +1,13 @@
 import { prisma } from '../utils/prisma';
-
+import { encrypt } from "../utils/encryption";
 export class rentalCustomerService {
 
   static async getAll() {
-    return prisma.rentalCustomer.findMany();
+    return prisma.rentalCustomer.findMany({
+      include:{
+        rentals:true
+      }
+    });
   }
 
   static async getById(id: number) {
@@ -15,19 +19,21 @@ export class rentalCustomerService {
   static async create(input: {
     name: string;
     phone: string;
-    address?: string;
-    email?: string;
+    pictureKtp?: string;
   }) {
+     const encrypted = input.pictureKtp ? encrypt(input.pictureKtp) : undefined;
     return prisma.rentalCustomer.create({
-      data: input
+     data: {
+      name: input.name,
+      phone: input.phone,
+      pictureKtp: encrypted ?? "",
+    },
     });
   }
 
   static async update(id: number, input: {
     name: string;
     phone: string;
-    address?: string;
-    email?: string;
   }) {
     return prisma.rentalCustomer.update({
       where: { id_rental_customer: id },
