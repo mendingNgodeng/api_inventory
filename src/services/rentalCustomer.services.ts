@@ -1,5 +1,5 @@
 import { prisma } from '../utils/prisma';
-import { encrypt } from "../utils/encryption";
+import { encrypt,decrypt } from "../utils/encryption";
 export class rentalCustomerService {
 
   static async getAll() {
@@ -11,9 +11,13 @@ export class rentalCustomerService {
   }
 
   static async getById(id: number) {
-    return prisma.rentalCustomer.findUnique({
-      where: { id_rental_customer:id }
-    });
+   const data = await prisma.rentalCustomer.findUnique({ where: { id_rental_customer: id }});
+  if (!data) return null;
+
+  return {
+    ...data,
+    pictureKtp: data.pictureKtp ? decrypt(data.pictureKtp) : ""
+  };
   }
 
   static async create(input: {

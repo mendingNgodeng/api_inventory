@@ -76,7 +76,8 @@ export class rentalCustomerController {
         data
       }, 201);
 
-    } catch (error) {
+    } catch (error:any) {
+        console.error("CREATE ERROR:", error?.message, error);
       return c.json({
         success: false,
         message: error instanceof Error ? error.message : 'Internal server error'
