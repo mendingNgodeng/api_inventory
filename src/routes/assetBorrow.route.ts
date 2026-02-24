@@ -20,7 +20,7 @@ assetBorrow.get(
 // );
 
 assetBorrow.post(
-  '/used',
+  '/used', authMiddleware,
   assetBorrowController.createUsed
 );
 
@@ -42,7 +42,7 @@ assetBorrow.put(
 
 
 assetBorrow.delete(
-  '/:id',
+  '/:id', authMiddleware,
   assetBorrowController.delete
 );
 

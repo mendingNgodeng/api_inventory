@@ -6,7 +6,7 @@ import { authMiddleware } from '../middleware/auth.middleware';
 const auth = new Hono();
 
 auth.post(
-  '/register',
+  '/register', 
   AuthController.register
 );
 

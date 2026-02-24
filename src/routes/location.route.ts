@@ -5,27 +5,27 @@ import { authMiddleware } from '../middleware/auth.middleware';
 const location = new Hono();
 
 location.get(
-  '/',
+  '/', authMiddleware,
   LocationController.getAll
 );
 
 location.get(
-  '/:id',
+  '/:id', authMiddleware,
   LocationController.get
 );
 
 location.post(
-  '/',
+  '/', authMiddleware,
   LocationController.create
 );
 
 location.put(
-  '/:id',
+  '/:id', authMiddleware,
   LocationController.update
 );
 
 location.delete(
-  '/:id',
+  '/:id', authMiddleware,
   LocationController.delete
 );
 

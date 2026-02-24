@@ -5,17 +5,17 @@ import { authMiddleware } from '../middleware/auth.middleware';
 const assetMaintenance = new Hono();
 
 assetMaintenance.get(
-  '/',
+  '/', authMiddleware,
   assetMaintenaceController.getAll
 );
 
 assetMaintenance.get(
-  '/:id',
+  '/:id', authMiddleware,
   assetMaintenaceController.get
 );
 
 assetMaintenance.post(
-  '/',
+  '/', authMiddleware,
   assetMaintenaceController.createMaintenance
 );
 
@@ -25,13 +25,13 @@ assetMaintenance.post(
 // );
 
 assetMaintenance.put(
-  '/:id/return',
+  '/:id/return', authMiddleware,
   assetMaintenaceController.returnAsset
 );
 
 
 assetMaintenance.delete(
-  '/:id',
+  '/:id', authMiddleware,
   assetMaintenaceController.delete
 );
 

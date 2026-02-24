@@ -5,27 +5,27 @@ import { authMiddleware } from '../middleware/auth.middleware';
 const asssetCtg = new Hono();
 
 asssetCtg.get(
-  '/',
+  '/', authMiddleware,
   AssetCategoryController.getAll
 );
 
 asssetCtg.get(
-  '/:id',
+  '/:id', authMiddleware,
   AssetCategoryController.get
 );
 
 asssetCtg.post(
-  '/',
+  '/',authMiddleware,
   AssetCategoryController.create
 );
 
 asssetCtg.put(
-  '/:id',
+  '/:id',authMiddleware,
   AssetCategoryController.update
 );
 
 asssetCtg.delete(
-  '/:id',
+  '/:id',authMiddleware,
   AssetCategoryController.delete
 );
 

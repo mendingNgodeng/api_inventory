@@ -15,17 +15,17 @@ assetStock.get(
 );
 
 assetStock.post(
-  '/',
+  '/', authMiddleware,
   assetStockController.create
 );
 
 assetStock.put(
-  '/:id',
+  '/:id', authMiddleware,
   assetStockController.update
 );
 
 assetStock.delete(
-  '/:id',
+  '/:id', authMiddleware,
   assetStockController.delete
 );
 
