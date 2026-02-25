@@ -4,7 +4,7 @@ import { BorrowStatus,AssetStockStatus } from '@prisma/client';
 export class AssetBorrowService {
 static async getAll() {
   return prisma.assetBorrowed.findMany({
-    orderBy:{borrowed_date:'asc'},
+    orderBy:{borrowed_date:'desc'},
     include: {
         user:{
             select:{

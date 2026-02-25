@@ -43,7 +43,7 @@ export class StatisticService {
     .sort((a, b) => b.total_stock - a.total_stock).splice(0,7);
 }
 
-// summary of it all
+// summary of it all more EFFICIENT!
 static async getDashboardSummary() {
   const [
     totalAsset,

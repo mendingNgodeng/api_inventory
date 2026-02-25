@@ -4,7 +4,7 @@ export class assetStockService {
 
   static async getAll() {
     return prisma.assetStock.findMany({
-      orderBy:{created_at:'asc'},
+      orderBy:{created_at:'desc'},
       include: {
         asset:
         {

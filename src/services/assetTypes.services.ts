@@ -3,7 +3,10 @@ import { prisma } from '../utils/prisma';
 export class AssetTypesService {
 
   static async getAll() {
-    return prisma.assetTypes.findMany();
+    return prisma.assetTypes.findMany({
+    // orderBy:{created_at:'desc'},
+
+    });
   }
 
   static async getById(id: number) {

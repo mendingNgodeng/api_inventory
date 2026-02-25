@@ -4,6 +4,7 @@ export class rentalCustomerService {
 
   static async getAll() {
     return prisma.rentalCustomer.findMany({
+      orderBy:{created_at:'desc'},
       include:{
         rentals:true
       }

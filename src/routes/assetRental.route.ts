@@ -29,9 +29,16 @@ assetRental.put(
   assetRentalController.cancel
 );
 
-// assetRental.delete(
-//   '/:id',
-//   assetRentalController.delete
-// );
+// just the non active
+assetRental.delete(
+  '/:id',
+  assetRentalController.delete
+);
+
+// just the non active
+assetRental.delete(
+  '/nonActive',
+  assetRentalController.deleteAllNonActive
+);
 
 export default assetRental;

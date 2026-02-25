@@ -4,6 +4,7 @@ import { MaintenanceStatus } from '@prisma/client';
 export class assetMaintenanceService {
 static async getAll() {
   return prisma.assetMaintenance.findMany({
+    orderBy:{created_at:'desc'},
     include: {
       assetStock: {
         include: {

@@ -154,11 +154,12 @@ export class assetRentalService {
       const rental = await tx.assetRental.findUnique({
         where: { id_asset_rental: id },
       });
-
+      
       if (!rental) throw new Error("Data rental tidak ditemukan");
       if (rental.status === "SELESAI") throw new Error("Rental sudah selesai");
       if (rental.status === "DIBATALKAN") throw new Error("Rental sudah dibatalkan");
-
+      
+    
       // stock asal (row TERSEDIA/TIDAK_TERSEDIA)
       const goodStock = await tx.assetStock.findUnique({
         where: { id_asset_stock: rental.id_asset_stock },
@@ -204,16 +205,49 @@ export class assetRentalService {
       });
 
       // 3) update rental
-      return tx.assetRental.update({
+      const updated = tx.assetRental.update({
         where: { id_asset_rental: id },
         data: {
           status: "SELESAI",
           image_after_rental: input?.image_after_rental ?? null,
         },
       });
+
+        // clean up
+      await this.clearKtpIfNoActiveRentals(tx, rental.id_rental_customer);
+      return updated;
     });
+
+    
   }
 
+  // jika status selesai atau dibatalkan
+  static async delete(id:number){
+ return prisma.$transaction(async (tx) => {
+      const rental = await tx.assetRental.findUnique({
+        where: { id_asset_rental: id },
+      });
+
+      if (!rental) throw new Error("Data rental tidak ditemukan");
+      if (rental.status === "AKTIF") throw new Error("Rental Data Masih digunakan!");
+      
+      tx.assetRental.delete({where: {id_asset_rental:id}})
+    })
+  }
+
+ static async deleteAllNonActive() {
+  return prisma.$transaction(async (tx) => {
+    const res = await tx.assetRental.deleteMany({
+      where: {
+        status: { not: "AKTIF" },
+      },
+    });
+
+    return {
+      deleted: res.count,
+    };
+  });
+}
   // Batalkan rental: set status DIBATALKAN + balikin stock
 static async cancelRental(id: number) {
     return prisma.$transaction(async (tx) => {
@@ -224,6 +258,9 @@ static async cancelRental(id: number) {
       if (!rental) throw new Error("Data rental tidak ditemukan");
       if (rental.status === "SELESAI") throw new Error("Rental sudah selesai");
       if (rental.status === "DIBATALKAN") throw new Error("Rental sudah dibatalkan");
+
+      // clean up
+      await this.clearKtpIfNoActiveRentals(tx, rental.id_rental_customer);
 
       const goodStock = await tx.assetStock.findUnique({
         where: { id_asset_stock: rental.id_asset_stock },
@@ -265,10 +302,38 @@ static async cancelRental(id: number) {
         },
       });
 
-      return tx.assetRental.update({
+     const updated=  tx.assetRental.update({
         where: { id_asset_rental: id },
         data: { status: "DIBATALKAN" },
       });
+      // clean up KTP
+      await this.clearKtpIfNoActiveRentals(tx, rental.id_rental_customer);
+      return updated;
     });
+
   }
+
+
+  // helper hapus KTP saat sudah selesai rental
+  static async clearKtpIfNoActiveRentals(tx: any, id_rental_customer: number) {
+  const activeCount = await tx.assetRental.count({
+    where: {
+      id_rental_customer,
+      status: "AKTIF",
+    },
+  });
+
+  if (activeCount > 0) return { cleared: false };
+
+  // hanya hapus data KTP
+  await tx.rentalCustomer.update({
+    where: { id_rental_customer },
+    data: {
+      pictureKtp: null, // atau "" 
+     
+    },
+  });
+
+  return { cleared: true };
+}
 }
