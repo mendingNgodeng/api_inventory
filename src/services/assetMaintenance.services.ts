@@ -34,8 +34,8 @@ static async createMaintenance(
   input: {
     id_asset_stock: number;
     quantity: number;
-    cost: number;
-    description:string;
+    cost?: number;
+    description?:string;
   }
 ) {
   if (input.quantity <= 0) {
@@ -114,7 +114,7 @@ static async createMaintenance(
 }
 
 
-// Pengembaian
+// Pengembalian
 static async fixedAsset(id: number) {
   return prisma.$transaction(async (tx) => {
 

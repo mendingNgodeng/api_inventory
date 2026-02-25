@@ -139,7 +139,6 @@ model AssetBorrowed {
 
 }
 enum RentalStatus {
-  PENDING
   AKTIF
   SELESAI
   DIBATALKAN
@@ -149,7 +148,7 @@ model RentalCustomer {
   id_rental_customer Int @id @default(autoincrement())
   name    String
   phone   String?
-  pictureKtp String
+  pictureKtp String?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   rentals AssetRental[]
@@ -163,12 +162,14 @@ model AssetRental {
   rental_start        DateTime
   rental_end          DateTime
   price               Float
+  image_after_rental  String?
   status              RentalStatus
   assetStock AssetStock     @relation(fields: [id_asset_stock], references: [id_asset_stock])
   customer RentalCustomer @relation(fields: [id_rental_customer], references: [id_rental_customer])
 }
-//history purpose
 
+
+//history purpose
 model AssetLogs {
   id_asset_logs Int @id @default(autoincrement())
   action        String

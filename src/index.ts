@@ -10,7 +10,7 @@ import rentalCustomer from './routes/rentalCustomer.route';
 import assetBorrow from './routes/assetBorrow.route';
 import assetMaintenance from './routes/assetMaintenance.route';
 import statistic from './routes/statistic.route';
-
+import assetRental from './routes/assetRental.route'
 
 
 
@@ -40,6 +40,7 @@ app.route('/rentalCustomer', rentalCustomer);
 app.route('/assetStock', assetStock);
 app.route('/assetBorrow', assetBorrow);
 app.route('/assetMaintenance', assetMaintenance);
+app.route('/assetRental', assetRental);
 app.route('/statistic', statistic);
 
 export default app;
