@@ -31,7 +31,11 @@ export class assetService {
     is_rentable:boolean;
   }) {
     return prisma.asset.create({
-      data: input
+      data: {...input},
+     include:{
+        type:true,
+        category:true
+      }
     });
   }
 
@@ -47,7 +51,11 @@ export class assetService {
     return prisma.asset.update({
       where: { id_assets: id },
       data: {
-       ...input
+       ...input,
+      },
+      include:{
+        type:true,
+        category:true
       }
     });
   }
