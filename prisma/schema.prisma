@@ -161,6 +161,7 @@ model AssetRental {
   quantity            Int
   rental_start        DateTime
   rental_end          DateTime
+  returned_date       DateTime? @updatedAt
   price               Float
   image_after_rental  String?
   status              RentalStatus
