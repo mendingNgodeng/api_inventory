@@ -159,7 +159,7 @@ export class assetRentalService {
       if (rental.status === "SELESAI") throw new Error("Rental sudah selesai");
       if (rental.status === "DIBATALKAN") throw new Error("Rental sudah dibatalkan");
       
-    
+  
       // stock asal (row TERSEDIA/TIDAK_TERSEDIA)
       const goodStock = await tx.assetStock.findUnique({
         where: { id_asset_stock: rental.id_asset_stock },
@@ -205,7 +205,7 @@ export class assetRentalService {
       });
 
       // 3) update rental
-      const updated = tx.assetRental.update({
+      const updated = await tx.assetRental.update({
         where: { id_asset_rental: id },
         data: {
           status: "SELESAI",
@@ -259,9 +259,6 @@ static async cancelRental(id: number) {
       if (rental.status === "SELESAI") throw new Error("Rental sudah selesai");
       if (rental.status === "DIBATALKAN") throw new Error("Rental sudah dibatalkan");
 
-      // clean up
-      await this.clearKtpIfNoActiveRentals(tx, rental.id_rental_customer);
-
       const goodStock = await tx.assetStock.findUnique({
         where: { id_asset_stock: rental.id_asset_stock },
       });
@@ -302,7 +299,7 @@ static async cancelRental(id: number) {
         },
       });
 
-     const updated=  tx.assetRental.update({
+     const updated= await tx.assetRental.update({
         where: { id_asset_rental: id },
         data: { status: "DIBATALKAN" },
       });
@@ -329,8 +326,7 @@ static async cancelRental(id: number) {
   await tx.rentalCustomer.update({
     where: { id_rental_customer },
     data: {
-      pictureKtp: null, // atau "" 
-     
+      pictureKtp: "", // atau "" 
     },
   });
 
