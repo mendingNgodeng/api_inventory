@@ -162,7 +162,7 @@ static async returnAsset(id: number) {
       throw new Error("Asset sudah dikembalikan");
     }
 
-    // Hanya boleh return kalau statusnya masih DIPINJAM / DIPAKAI (bukan TERLAMBAT? tergantung rules kamu)
+    // Hanya boleh return kalau statusnya masih DIPINJAM / DIPAKAI)
     if (borrow.status !== "DIPINJAM" && borrow.status !== "DIPAKAI" && borrow.status !== "TERLAMBAT") {
       throw new Error("Status peminjaman tidak valid untuk pengembalian");
     }
@@ -232,54 +232,6 @@ static async returnAsset(id: number) {
     });
   });
 }
-// static async returnAsset(id: number) {
-//   return prisma.$transaction(async (tx) => {
-
-//     const borrow = await tx.assetBorrowed.findUnique({
-//       where: { id_asset_borrowed: id }
-//     });
-
-//     if (!borrow) {
-//       throw new Error("Data tidak ditemukan");
-//     }
-
-//     if (borrow.status === "DIKEMBALIKAN") {
-//       throw new Error("Asset sudah dikembalikan");
-//     }
-
-//     // Ambil stock sekarang
-//     const stock = await tx.assetStock.findUnique({
-//       where: { id_asset_stock: borrow.id_asset_stock }
-//     });
-
-//     if (!stock) {
-//       throw new Error("Stock tidak ditemukan");
-//     }
-
-//     const newQuantity = stock.quantity + borrow.quantity;
-
-//     const newStatus = newQuantity > 0
-//       ? "TERSEDIA"
-//       : "TIDAK_TERSEDIA";
-
-//     await tx.assetStock.update({
-//       where: { id_asset_stock: borrow.id_asset_stock },
-//       data: {
-//         quantity: newQuantity,
-//         status: newStatus
-//       }
-//     });
-
-//     return tx.assetBorrowed.update({
-//       where: { id_asset_borrowed: id },
-//       data: {
-//         status: "DIKEMBALIKAN",
-//         returned_date: new Date()
-//       }
-//     });
-//   });
-// }
-
 
 
   static async update(id: number, input: {
@@ -297,11 +249,6 @@ static async returnAsset(id: number) {
     });
   }
 
-  // static async delete(id: number) {
-  //   return prisma.assetBorrowed.delete({
-  //     where: { id_asset_borrowed: id }
-  //   });
-  // }
   static async delete(id: number) {
   const borrow = await prisma.assetBorrowed.findUnique({
     where: { id_asset_borrowed: id }
