@@ -12,7 +12,8 @@ export class locationService {
     });
   }
 
-  static async create(input: {
+  // uhhh not used now i guess
+  static async createLog(input: {
     name: string;
     description?: string;
   }) {
@@ -22,7 +23,7 @@ export class locationService {
     });
   }
 
-  static async createLog(input:{
+  static async create(input:{
     name:string;
     description?:string;
   }){ 
@@ -41,28 +42,79 @@ export class locationService {
           },
         }),
       });
-
       return created;
     });
 
 
   }
-  static async update(id: number, input: {
-    name: string;
-    description?: string;
-  }) {
+   static async update(id: number, input: { name: string; description?: string }) {
+    return prisma.$transaction(async (tx) => {
+      // ambil data lama buat audit diff (opsional tapi enak)
+      const before = await tx.location.findUnique({
+        where: { id_location: id },
+      });
+      if (!before) throw new Error("Location tidak ditemukan");
 
-    return prisma.location.update({
-      where: { id_location: id },
-      data: {
-       ...input
-      }
+      const updated = await tx.location.update({
+        where: { id_location: id },
+        data: { ...input },
+      });
+
+      await createAssetLog(tx, {
+        action: "LOCATION_UPDATE",
+        description: buildLogDescription({
+          title: "Lokasi diupdate",
+          detail: `Lokasi "${before.name}" → "${updated.name}"`,
+          meta: {
+            id_location: id,
+            before: {
+              name: before.name,
+              description: before.description ?? null,
+            },
+            after: {
+              name: updated.name,
+              description: updated.description ?? null,
+            },
+          },
+        }),
+      });
+
+      return updated;
     });
   }
+  
 
+  // static async delete(id: number) {
+  //   return prisma.location.delete({
+  //     where: { id_location: id }
+  //   });
+  // }
   static async delete(id: number) {
-    return prisma.location.delete({
-      where: { id_location: id }
+    return prisma.$transaction(async (tx) => {
+      // ambil dulu buat log (karena setelah delete datanya hilang)
+      const before = await tx.location.findUnique({
+        where: { id_location: id },
+      });
+      if (!before) throw new Error("Location tidak ditemukan");
+
+      const deleted = await tx.location.delete({
+        where: { id_location: id },
+      });
+
+      await createAssetLog(tx, {
+        action: "LOCATION_DELETE",
+        description: buildLogDescription({
+          title: "Lokasi dihapus",
+          detail: `Lokasi "${before.name}" dihapus`,
+          meta: {
+            id_location: before.id_location,
+            name: before.name,
+            description: before.description ?? null,
+          },
+        }),
+      });
+
+      return deleted;
     });
   }
 }
