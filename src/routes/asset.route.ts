@@ -9,9 +9,9 @@ asset.get(
   '/', 
   authMiddleware,
    rateLimit({
-    windowSec:10,
-    max:10,
-    keyPrefix:'rl:Asset'
+    windowSec:Number(process.env.rl_read_windowsSecs),
+    max:Number(process.env.rl_read_max),
+    keyPrefix:String(process.env.asset_get_keyPrefix)
   }),
   assetController.getAll
 );
@@ -19,25 +19,40 @@ asset.get(
 asset.get(
   '/:id',authMiddleware,
   rateLimit({
-    windowSec:10,
-    max:10,
-    keyPrefix:'rl:AssetById'
+    windowSec:Number(process.env.rl_read_windowsSecs),
+    max:Number(process.env.rl_read_max),
+    keyPrefix:String(process.env.asset_getById_keyPrefix)
   }),
   assetController.get
 );
 
 asset.post(
   '/',authMiddleware,
+  rateLimit({
+    windowSec:Number(process.env.rl_write_windowsSecs),
+    max:Number(process.env.rl_write_max),
+    keyPrefix:String(process.env.asset_create_keyPrefix)
+  }),
   assetController.create
 );
 
 asset.put(
   '/:id',authMiddleware,
+   rateLimit({
+    windowSec:Number(process.env.rl_write_windowsSecs),
+    max:Number(process.env.rl_write_max),
+    keyPrefix:String(process.env.asset_update_keyPrefix)
+  }),
   assetController.update
 );
 
 asset.delete(
   '/:id',authMiddleware,
+     rateLimit({
+    windowSec:Number(process.env.rl_delete_windowsSecs),
+    max:Number(process.env.rl_delete_max),
+    keyPrefix:String(process.env.asset_delete_keyPrefix)
+  }),
   assetController.delete
 );
 
