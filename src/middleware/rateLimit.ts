@@ -1,7 +1,7 @@
 // dont forget to instal redis to use this!
 
 import type { Context, Next } from 'hono';
-// import { redis } from '../utils/redis';
+import { redis } from '../utils/redis';
 
 interface RateLimitOptions {
   windowSec: number;
@@ -16,7 +16,7 @@ export const rateLimit = (opts: RateLimitOptions) => {
     const user = c.get('user');
 
     const ip =
-      c.req.header('x-forwarded') || c.req.header('x-real-ip') || 'unknown';
+      c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
 
     const identifier = user?.id ?? ip;
 
