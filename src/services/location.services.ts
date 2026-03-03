@@ -12,7 +12,7 @@ export class locationService {
     });
   }
 
-  // uhhh not used now i guess, safe keeping it here.
+  // uhhh not used now i guess, safe keeping it here
   // static async createLog(input: {
   //   name: string;
   //   description?: string;

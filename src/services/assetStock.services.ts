@@ -38,66 +38,53 @@ export class assetStockService {
     condition: AssetCondition;
     quantity: number;
   }) {
-    // const status =
-    // input.quantity > 0
-      // ? AssetStockStatus.TERSEDIA
-      // : AssetStockStatus.TIDAK_TERSEDIA;
 
-    return prisma.assetStock.create({
+      return prisma.$transaction(async(tx) => {
+     const created = await prisma.assetStock.create({
       data: {...input,status:"TERSEDIA",condition:"BAIK"}, 
       include:{
         asset:true,
         location:true
       }
     });
+
+      await createAssetLog(tx,{
+        action:"ASSET_STOCK_CREATE",
+        description:buildLogDescription({
+          title:"Stok Aset dibuat",
+        detail: `Stok aset "${created.asset.asset_name} (${created.asset.asset_code})"  dengan kuantitas ${created.quantity} berhasil dibuat`,
+          meta: {
+            id_asset_stock: created.id_asset_stock,
+            asset: created.asset.asset_name," - ":created.asset.asset_code,
+            quantity: created.quantity,
+            condition:created.condition,
+            status:created.status
+          },
+        }),
+      });
+      return created;
+    });
+    // const status =
+    // input.quantity > 0
+      // ? AssetStockStatus.TERSEDIA
+      // : AssetStockStatus.TIDAK_TERSEDIA;
+
+    // return prisma.assetStock.create({
+    //   data: {...input,status:"TERSEDIA",condition:"BAIK"}, 
+    //   include:{
+    //     asset:true,
+    //     location:true
+    //   }
+    // });
   }
 
-//   static async update(id: number, input: {
-//     id_asset: number;
-//     id_location: number;
-//     // condition: AssetCondition;
-//     quantity: number;
-//   }) {
-    
-//    const current = await prisma.assetStock.findUnique({
-//   where: { id_asset_stock: id },
-//   select: { status: true },
-// });
 
-//   if (!current) throw new Error("Data asset stock tidak ditemukan");
-
-//   const canEditAll =
-//     current.status === AssetStockStatus.TERSEDIA ||
-//     current.status === AssetStockStatus.TIDAK_TERSEDIA;
-
-//   if (!canEditAll) {
-//     const isChangingAsset = input.id_asset !== current.id_assets;
-//     const isChangingQty = input.quantity !== current.quantity;
-
-//     if (isChangingAsset || isChangingQty) {
-//       throw new Error("Tidak boleh update asset/quantity untuk status ini!");
-//     }
-
-//     const status =
-//     input.quantity > 0
-//       ? AssetStockStatus.TERSEDIA
-//       : AssetStockStatus.TIDAK_TERSEDIA;
-//     return prisma.assetStock.update({
-//       where: { id_asset_stock: id },
-//       data: {
-//        ...input,
-//        status
-//       },
-//       include:{
-//         asset:true,
-//         location:true
-//       }
-//     });
-//   }}
 static async update(
   id: number,
   input: { id_asset: number; id_location: number; quantity: number }
 ) {
+  return prisma.$transaction(async(tx) => {
+
   const current = await prisma.assetStock.findUnique({
     where: { id_asset_stock: id },
     select: {
@@ -111,7 +98,7 @@ static async update(
   if (!current) throw new Error("Data asset stock tidak ditemukan");
 
   const canEditAll =
-    current.status === AssetStockStatus.TERSEDIA 
+    current.status === AssetStockStatus.TERSEDIA && current.quantity > 0
     // ||
     // current.status === AssetStockStatus.TIDAK_TERSEDIA;
 
@@ -139,15 +126,15 @@ static async update(
     // data: { ...input, status: nextStatus },
     include: { asset: true, location: true },
   });
+  })
+
 }
-  // static async delete(id: number) {
-  //   return prisma.assetStock.delete({
-  //     where: { id_asset_stock: id }
-  //   });
-  // }
+
 
   static async delete(id: number) {
     // 0) ambil stock lengkap (butuh status)
+    return prisma.$transaction(async(tx) =>{
+
     const stock = await prisma.assetStock.findUnique({
       where: { id_asset_stock: id },
       select: {
@@ -155,9 +142,18 @@ static async update(
         status: true,
       },
     });
+     const before = await prisma.assetStock.findUnique({
+      where: { id_asset_stock: id },
+      include:{
+        asset:true
+      }
+    });
 
     if (!stock) {
       throw new Error("Stock tidak ditemukan");
+    }
+       if (!before) {
+      throw new Error("data aset stok tidak ditemukan");
     }
 
     // 1) Larang hapus untuk stock “non-deletable” berdasarkan statusnya
@@ -200,9 +196,26 @@ static async update(
     }
 
     // lolos semua validasi, delete
-    return prisma.assetStock.delete({
+    const data = await prisma.assetStock.delete({
       where: { id_asset_stock: id },
     });
+
+      await createAssetLog(tx, {
+        action: "ASSET_STOCK_DELETE",
+        description: buildLogDescription({
+          title: "Stok Aset dihapus",
+          detail: `Stok Aset "${before.asset.asset_name} (${before.asset.asset_code})" dihapus`,
+          meta: {
+           id_asset_stock: before.id_asset_stock,
+            asset: before.asset.asset_name," - ":before.asset.asset_code,
+            quantity: before.quantity,
+            condition:before.condition,
+            status:before.status
+          },
+        }),
+      });
+    })
+
   }
   }
 

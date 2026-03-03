@@ -3,6 +3,9 @@ import { PrismaClient } from "@prisma/client";
 type TxLike = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
 export type AssetLogAction =
+  | "ASSET_STOCK_UPDATE" 
+  | "ASSET_STOCK_CREATE"//only this
+  | "ASSET_STOCK_DELETE"//only this
   | "ASSET_UPDATE"
   | "ASSET_CREATE"
   | "ASSET_DELETE"
@@ -21,7 +24,7 @@ export type AssetLogAction =
   | "LOCATION_UPDATE"
   | "LOCATION_CREATE"
   | "LOCATION_DELETE"
-  | "BORROW_CREATE"
+  | "BORROW_CREATE" // from here not yet
   | "BORROW_RETURN"
   | "BORROW_CANCEL"
   | "RENTAL_CREATE"
