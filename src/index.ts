@@ -11,6 +11,8 @@ import assetBorrow from './routes/assetBorrow.route';
 import assetMaintenance from './routes/assetMaintenance.route';
 import statistic from './routes/statistic.route';
 import assetRental from './routes/assetRental.route'
+import assetLogs from './routes/assetLogs.route'
+
 
 
 
@@ -42,5 +44,7 @@ app.route('/assetBorrow', assetBorrow);
 app.route('/assetMaintenance', assetMaintenance);
 app.route('/assetRental', assetRental);
 app.route('/statistic', statistic);
+app.route('/assetLogs', assetLogs);
+
 
 export default app;
