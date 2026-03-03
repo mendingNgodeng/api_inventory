@@ -1,5 +1,5 @@
 import { prisma } from '../utils/prisma';
-import { AssetLogAction,createAssetLog,buildLogDescription} from '../utils/asset-logs';
+import { createAssetLog,buildLogDescription} from '../utils/asset-logs';
 export class locationService {
 
   static async getAll() {
@@ -12,16 +12,16 @@ export class locationService {
     });
   }
 
-  // uhhh not used now i guess
-  static async createLog(input: {
-    name: string;
-    description?: string;
-  }) {
+  // uhhh not used now i guess, safe keeping it here.
+  // static async createLog(input: {
+  //   name: string;
+  //   description?: string;
+  // }) {
    
-    return prisma.location.create({
-      data: input
-    });
-  }
+  //   return prisma.location.create({
+  //     data: input
+  //   });
+  // }
 
   static async create(input:{
     name:string;
@@ -49,7 +49,7 @@ export class locationService {
   }
    static async update(id: number, input: { name: string; description?: string }) {
     return prisma.$transaction(async (tx) => {
-      // ambil data lama buat audit diff (opsional tapi enak)
+      // ambil data lama (opsional but why not?)
       const before = await tx.location.findUnique({
         where: { id_location: id },
       });
