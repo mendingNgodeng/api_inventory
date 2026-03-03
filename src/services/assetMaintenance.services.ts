@@ -64,14 +64,14 @@ static async createMaintenance(
     // Kurangi stock lama
     const remainingQty = stock.quantity - input.quantity;
 
-    const newStatus =
-      remainingQty > 0 ? "TERSEDIA" : "TIDAK_TERSEDIA";
+    // const newStatus =
+    //   remainingQty > 0 ? "TERSEDIA" : "TIDAK_TERSEDIA";
 
     await tx.assetStock.update({
       where: { id_asset_stock: stock.id_asset_stock },
       data: {
         quantity: remainingQty,
-        status: newStatus
+        // status: newStatus
       }
     });
 

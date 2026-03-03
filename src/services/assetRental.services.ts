@@ -83,11 +83,14 @@ export class assetRentalService {
 
       // 1) kurangi stock TERSEDIA
       const remainingQty = stock.quantity - input.quantity;
-      const newStatus = remainingQty > 0 ? "TERSEDIA" : "TIDAK_TERSEDIA";
+      // const newStatus = remainingQty > 0 ? "TERSEDIA" : "TIDAK_TERSEDIA";
 
       await tx.assetStock.update({
         where: { id_asset_stock: stock.id_asset_stock },
-        data: { quantity: remainingQty, status: newStatus },
+        data: { quantity: remainingQty 
+          // status: newStatus 
+          
+        },
       });
 
       // 2) tambah / update BAIK + DISEWA

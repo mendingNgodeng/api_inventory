@@ -95,13 +95,13 @@ static async getAll() {
 
       // 1) Kurangi stok asal
       const remainingQty = stock.quantity - input.quantity;
-      const newStatusAsal = remainingQty > 0 ? "TERSEDIA" : "TIDAK_TERSEDIA";
+      // const newStatusAsal = remainingQty > 0 ? "TERSEDIA" : "TIDAK_TERSEDIA";
 
       await tx.assetStock.update({
         where: { id_asset_stock: stock.id_asset_stock },
         data: {
           quantity: remainingQty,
-          status: newStatusAsal
+          // status: newStatusAsal
         }
       });
 
