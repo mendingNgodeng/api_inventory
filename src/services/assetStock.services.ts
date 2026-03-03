@@ -1,5 +1,7 @@
 import { prisma } from '../utils/prisma';
 import { AssetStockStatus,BorrowStatus, AssetCondition,MaintenanceStatus } from '@prisma/client';
+import { createAssetLog,buildLogDescription} from '../utils/asset-logs';
+
 export class assetStockService {
 
   static async getAll() {
@@ -36,13 +38,13 @@ export class assetStockService {
     condition: AssetCondition;
     quantity: number;
   }) {
-    const status =
-    input.quantity > 0
-      ? AssetStockStatus.TERSEDIA
-      : AssetStockStatus.TIDAK_TERSEDIA;
+    // const status =
+    // input.quantity > 0
+      // ? AssetStockStatus.TERSEDIA
+      // : AssetStockStatus.TIDAK_TERSEDIA;
 
     return prisma.assetStock.create({
-      data: {...input,status,condition:"BAIK"}, 
+      data: {...input,status:"TERSEDIA",condition:"BAIK"}, 
       include:{
         asset:true,
         location:true
@@ -109,8 +111,9 @@ static async update(
   if (!current) throw new Error("Data asset stock tidak ditemukan");
 
   const canEditAll =
-    current.status === AssetStockStatus.TERSEDIA ||
-    current.status === AssetStockStatus.TIDAK_TERSEDIA;
+    current.status === AssetStockStatus.TERSEDIA 
+    // ||
+    // current.status === AssetStockStatus.TIDAK_TERSEDIA;
 
   if (!canEditAll) {
     const isChangingAsset = input.id_asset !== current.id_asset;
@@ -127,12 +130,13 @@ static async update(
     });
   }
 
-  const nextStatus =
-    input.quantity > 0 ? AssetStockStatus.TERSEDIA : AssetStockStatus.TIDAK_TERSEDIA;
+  // const nextStatus =
+  //   input.quantity > 0 ? AssetStockStatus.TERSEDIA : AssetStockStatus.TIDAK_TERSEDIA;
 
   return prisma.assetStock.update({
     where: { id_asset_stock: id },
-    data: { ...input, status: nextStatus },
+    data: { ...input},
+    // data: { ...input, status: nextStatus },
     include: { asset: true, location: true },
   });
 }
