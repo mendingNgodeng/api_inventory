@@ -79,57 +79,149 @@ export class assetStockService {
   }
 
 
+// static async update(
+//   id: number,
+//   input: { id_asset: number; id_location: number; quantity: number }
+// ) {
+//   return prisma.$transaction(async(tx) => {
+
+//   const current = await prisma.assetStock.findUnique({
+//     where: { id_asset_stock: id },
+//     select: {
+//       status: true,
+//       id_asset: true,
+//       quantity: true,
+//       id_location: true,
+//     },
+//   });
+
+//   if (!current) throw new Error("Data asset stock tidak ditemukan");
+
+//   const canEditAll =
+//     current.status === AssetStockStatus.TERSEDIA && current.quantity > 0
+//     // ||
+//     // current.status === AssetStockStatus.TIDAK_TERSEDIA;
+
+//   if (!canEditAll) {
+//     const isChangingAsset = input.id_asset !== current.id_asset;
+//     const isChangingQty = input.quantity !== current.quantity;
+
+//     if (isChangingAsset || isChangingQty) {
+//       throw new Error("Tidak boleh update asset/quantity untuk status ini!");
+//     }
+
+//     return prisma.assetStock.update({
+//       where: { id_asset_stock: id },
+//       data: { id_location: input.id_location },
+//       include: { asset: true, location: true },
+//     });
+//   }
+
+//   // const nextStatus =
+//   //   input.quantity > 0 ? AssetStockStatus.TERSEDIA : AssetStockStatus.TIDAK_TERSEDIA;
+
+//   return prisma.assetStock.update({
+//     where: { id_asset_stock: id },
+//     data: { ...input},
+//     // data: { ...input, status: nextStatus },
+//     include: { asset: true, location: true },
+//   });
+//   })
+
+// }
 static async update(
   id: number,
   input: { id_asset: number; id_location: number; quantity: number }
 ) {
-  return prisma.$transaction(async(tx) => {
+  return prisma.$transaction(async (tx) => {
+    // FIX: gunakan tx (bukan prisma) supaya tetap 1 transaksi
+    const current = await tx.assetStock.findUnique({
+      where: { id_asset_stock: id },
+      select: {
+        status: true,
+        id_asset: true,
+        quantity: true,
+        id_location: true,
+      },
+    });
 
-  const current = await prisma.assetStock.findUnique({
-    where: { id_asset_stock: id },
-    select: {
-      status: true,
-      id_asset: true,
-      quantity: true,
-      id_location: true,
-    },
-  });
+    if (!current) throw new Error("Data asset stock tidak ditemukan");
 
-  if (!current) throw new Error("Data asset stock tidak ditemukan");
+    // rule kamu: boleh edit all hanya saat TERSEDIA dan qty > 0
+    const canEditAll =
+      current.status === AssetStockStatus.TERSEDIA && current.quantity > 0;
 
-  const canEditAll =
-    current.status === AssetStockStatus.TERSEDIA && current.quantity > 0
-    // ||
-    // current.status === AssetStockStatus.TIDAK_TERSEDIA;
-
-  if (!canEditAll) {
     const isChangingAsset = input.id_asset !== current.id_asset;
     const isChangingQty = input.quantity !== current.quantity;
+    const isChangingLoc = input.id_location !== current.id_location;
 
-    if (isChangingAsset || isChangingQty) {
-      throw new Error("Tidak boleh update asset/quantity untuk status ini!");
+    // helper: bikin object perubahan untuk meta log
+    const changed: Record<string, { from: any; to: any }> = {};
+    if (isChangingAsset) changed.id_asset = { from: current.id_asset, to: input.id_asset };
+    if (isChangingLoc) changed.id_location = { from: current.id_location, to: input.id_location };
+    if (isChangingQty) changed.quantity = { from: current.quantity, to: input.quantity };
+
+    // Kalau tidak boleh edit all, larang ubah asset/qty
+    if (!canEditAll) {
+      if (isChangingAsset || isChangingQty) {
+        throw new Error("Tidak boleh update asset/quantity untuk status ini!");
+      }
+
+      // FIX: update pakai tx
+      const updated = await tx.assetStock.update({
+        where: { id_asset_stock: id },
+        data: { id_location: input.id_location },
+        include: { asset: true, location: true },
+      });
+
+      // NEW: Asset Log untuk update lokasi saja (kalau memang ada perubahan lokasi)
+      if (isChangingLoc) {
+        await createAssetLog(tx, {
+          action: "ASSET_STOCK_UPDATE",
+          description: buildLogDescription({
+            title: "Stok Aset dipindahkan lokasi",
+            detail: `Stok aset "${updated.asset.asset_name} (${updated.asset.asset_code})" dipindahkan ke lokasi "${updated.location.name}"`,
+            meta: {
+              id_asset_stock: updated.id_asset_stock,
+              status: current.status,
+              canEditAll,
+              changed,
+            },
+          }),
+        });
+      }
+
+      return updated;
     }
 
-    return prisma.assetStock.update({
+    // FIX: update all pakai tx
+    const updated = await tx.assetStock.update({
       where: { id_asset_stock: id },
-      data: { id_location: input.id_location },
+      data: { ...input },
       include: { asset: true, location: true },
     });
-  }
 
-  // const nextStatus =
-  //   input.quantity > 0 ? AssetStockStatus.TERSEDIA : AssetStockStatus.TIDAK_TERSEDIA;
+    // NEW: Asset Log untuk update asset/qty/location (kalau ada perubahan)
+    // (kalau tidak ada perubahan sama sekali, skip log)
+    if (Object.keys(changed).length > 0) {
+      await createAssetLog(tx, {
+        action: "ASSET_STOCK_UPDATE",
+        description: buildLogDescription({
+          title: "Stok Aset diupdate",
+          detail: `Stok aset "${updated.asset.asset_name} (${updated.asset.asset_code})" berhasil diupdate`,
+          meta: {
+            id_asset_stock: updated.id_asset_stock,
+            status: current.status,
+            canEditAll,
+            changed,
+          },
+        }),
+      });
+    }
 
-  return prisma.assetStock.update({
-    where: { id_asset_stock: id },
-    data: { ...input},
-    // data: { ...input, status: nextStatus },
-    include: { asset: true, location: true },
+    return updated;
   });
-  })
-
 }
-
 
   static async delete(id: number) {
     // 0) ambil stock lengkap (butuh status)
