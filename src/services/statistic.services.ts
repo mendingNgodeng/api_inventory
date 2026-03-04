@@ -1,6 +1,22 @@
 // for dashboard
 import { prisma } from '../utils/prisma';
 
+function startOfDay(d = new Date()) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function endOfDay(d = new Date()) {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+
+function startOfMonth(d = new Date()) {
+  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+}
+
 export class StatisticService {
   static async get5LatestLogs() {
     return prisma.assetLogs.findMany({
@@ -82,6 +98,83 @@ static async getDashboardSummary() {
   };
 }
 
+ static async getBorrowSummary() {
+    const dayStart = startOfDay();
+    const dayEnd = endOfDay();
+
+    const [dipinjamAktif, dipakaiAktif, returnedToday] =
+      await Promise.all([
+        prisma.assetBorrowed.aggregate({
+          where: { status: "DIPINJAM" },
+          _sum: { quantity: true },
+          _count: { _all: true },
+        }),
+        prisma.assetBorrowed.aggregate({
+          where: { status: "DIPAKAI" },
+          _sum: { quantity: true },
+          _count: { _all: true },
+        }),
+      
+        prisma.assetBorrowed.aggregate({
+          where: {
+            status: "DIKEMBALIKAN",
+            returned_date: { gte: dayStart, lte: dayEnd },
+          },
+          _sum: { quantity: true },
+          _count: { _all: true },
+        }),
+      ]);
+
+    return {
+      dipinjam_aktif: {
+        total_qty: dipinjamAktif._sum.quantity ?? 0,
+        total_row: dipinjamAktif._count._all ?? 0,
+      },
+      dipakai_aktif: {
+        total_qty: dipakaiAktif._sum.quantity ?? 0,
+        total_row: dipakaiAktif._count._all ?? 0,
+      },
+      returned_today: {
+        total_qty: returnedToday._sum.quantity ?? 0,
+        total_row: returnedToday._count._all ?? 0,
+        day_start: dayStart.toISOString(),
+      },
+    };
+  }
+
+  /**
+   * Rental Summary + Revenue:
+   * - count status (AKTIF, SELESAI, DIBATALKAN)
+   * - revenue bulan ini (sum price dari rental SELESAI, berdasarkan rental_start >= awal bulan)
+   * - revenue total (sum price dari rental SELESAI)
+   */
+  static async getRentalSummary() {
+    const monthStart = startOfMonth();
+
+    const [aktifCount, selesaiCount, dibatalkanCount, revenueMonth, revenueTotal] =
+      await Promise.all([
+        prisma.assetRental.count({ where: { status: "AKTIF" } }),
+        prisma.assetRental.count({ where: { status: "SELESAI" } }),
+        prisma.assetRental.count({ where: { status: "DIBATALKAN" } }),
+        prisma.assetRental.aggregate({
+          where: { status: "SELESAI", rental_start: { gte: monthStart } },
+          _sum: { price: true },
+        }),
+        prisma.assetRental.aggregate({
+          where: { status: "SELESAI" },
+          _sum: { price: true },
+        }),
+      ]);
+
+    return {
+      aktif_count: aktifCount,
+      selesai_count: selesaiCount,
+      dibatalkan_count: dibatalkanCount,
+      revenue_month: revenueMonth._sum.price ?? 0,
+      revenue_total: revenueTotal._sum.price ?? 0,
+      month_start: monthStart.toISOString(),
+    };
+  }
 
 // not used
 static async totalAsset() {

@@ -38,7 +38,28 @@ statistic.get(
   statisticController.getDashboardSummary
 );
 
+statistic.get(
+  '/rentalSummary',
+  authMiddleware,
+  rateLimit({
+     windowSec:Number(process.env.rl_read_windowsSecs),
+      max:Number(process.env.rl_read_max),
+      keyPrefix:String(process.env.rankByCtg_prefix)
+    }),
+  statisticController.getRentalSummary
+);
 
+
+statistic.get(
+  '/BorrowSummary',
+  authMiddleware,
+  rateLimit({
+     windowSec:Number(process.env.rl_read_windowsSecs),
+      max:Number(process.env.rl_read_max),
+      keyPrefix:String(process.env.rankByCtg_prefix)
+    }),
+  statisticController.getBorrowSummary
+);
 // already in summary
 // statistic.get(
 //   '/totalUser',

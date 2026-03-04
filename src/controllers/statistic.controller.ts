@@ -36,6 +36,38 @@ export class statisticController {
     }
   }
 
+    static async getRentalSummary(c: Context) {
+    try {
+      const data = await StatisticService.getRentalSummary();
+      return c.json({
+        success: true,
+        data: data
+      });
+
+    } catch (error) {
+      return c.json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      }, 500);
+    }
+  }
+
+    static async getBorrowSummary(c: Context) {
+    try {
+      const data = await StatisticService.getBorrowSummary();
+      return c.json({
+        success: true,
+        data: data
+      });
+
+    } catch (error) {
+      return c.json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      }, 500);
+    }
+  }
+
     static async get5LatestLogs(c: Context) {
     try {
       const data = await StatisticService.get5LatestLogs();
