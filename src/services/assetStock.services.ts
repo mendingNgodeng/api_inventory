@@ -14,17 +14,42 @@ export class assetStockService {
           {
             asset_code:true,
             asset_name:true,
-            is_rentable:true
-          }
+            is_rentable:true,
+              type: { select: { name: true } },
+          category: { select: { name: true } },
+          },
+        
+          
       },
       location:{
         select:{
           name:true
         }
       }
+   
       }
     });
   }
+
+static async getAaall() {
+  return prisma.assetStock.findMany({
+    orderBy: { created_at: "desc" },
+    include: {
+      asset: {
+        select: {
+          asset_code: true,
+          asset_name: true,
+          is_rentable: true,
+          type: { select: { name: true } },
+          category: { select: { name: true } },
+        },
+      },
+      location: {
+        select: { name: true },
+      },
+    },
+  });
+}
 
   static async getById(id: number) {
     return prisma.assetStock.findUnique({
@@ -43,7 +68,16 @@ export class assetStockService {
      const created = await prisma.assetStock.create({
       data: {...input,status:"TERSEDIA",condition:"BAIK"}, 
       include:{
-        asset:true,
+        asset:{
+           select:
+          {
+            asset_code:true,
+            asset_name:true,
+            is_rentable:true,
+              type: { select: { name: true } },
+          category: { select: { name: true } },
+          },
+        },
         location:true
       }
     });
@@ -55,7 +89,7 @@ export class assetStockService {
         detail: `Stok aset "${created.asset.asset_name} (${created.asset.asset_code})"  dengan kuantitas ${created.quantity} berhasil dibuat`,
           meta: {
             id_asset_stock: created.id_asset_stock,
-            asset: created.asset.asset_name," - ":created.asset.asset_code,
+            asset_name: created.asset.asset_name,asset_code:created.asset.asset_code,
             quantity: created.quantity,
             condition:created.condition,
             status:created.status
@@ -171,7 +205,9 @@ static async update(
       const updated = await tx.assetStock.update({
         where: { id_asset_stock: id },
         data: { id_location: input.id_location },
-        include: { asset: true, location: true },
+        include: { 
+          asset: true,
+          location: true },
       });
 
       // NEW: Asset Log untuk update lokasi saja (kalau memang ada perubahan lokasi)
@@ -198,7 +234,18 @@ static async update(
     const updated = await tx.assetStock.update({
       where: { id_asset_stock: id },
       data: { ...input },
-      include: { asset: true, location: true },
+      include: { 
+        asset:{
+           select:
+          {
+            asset_code:true,
+            asset_name:true,
+            is_rentable:true,
+              type: { select: { name: true } },
+          category: { select: { name: true } },
+          },
+        },
+        location: true },
     });
 
     // NEW: Asset Log untuk update asset/qty/location (kalau ada perubahan)

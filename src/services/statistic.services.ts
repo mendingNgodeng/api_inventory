@@ -2,6 +2,12 @@
 import { prisma } from '../utils/prisma';
 
 export class StatisticService {
+  static async get5LatestLogs() {
+    return prisma.assetLogs.findMany({
+      orderBy:{created_at:'desc'},
+      take:5
+    })
+  }
   static async getCategoryRankingByStock() {
   const result = await prisma.assetStock.groupBy({
     by: ['id_asset'],

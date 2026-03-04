@@ -35,6 +35,22 @@ export class statisticController {
       }, 500);
     }
   }
+
+    static async get5LatestLogs(c: Context) {
+    try {
+      const data = await StatisticService.get5LatestLogs();
+      return c.json({
+        success: true,
+        data: data
+      });
+
+    } catch (error) {
+      return c.json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      }, 500);
+    }
+  }
 // not used all below
 
    static async totalAsset(c: Context) {

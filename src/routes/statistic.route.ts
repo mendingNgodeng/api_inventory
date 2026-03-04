@@ -17,6 +17,17 @@ statistic.get(
 );
 
 statistic.get(
+  '/get5LatestLogs',
+  authMiddleware,
+  rateLimit({
+     windowSec:Number(process.env.rl_read_windowsSecs),
+      max:Number(process.env.rl_read_max),
+      keyPrefix:String(process.env.rankByCtg_prefix)
+    }),
+  statisticController.get5LatestLogs
+);
+
+statistic.get(
   '/getDashboardSummary',
   authMiddleware,
   rateLimit({
