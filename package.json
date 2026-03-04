@@ -2,7 +2,9 @@
   "name": "api_inventory",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "retention": "bun src/jobs/retention.job.ts"
+
   },
   "dependencies": {
     "@prisma/client": "6.19.0",
