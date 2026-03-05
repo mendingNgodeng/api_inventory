@@ -14,8 +14,6 @@ import assetRental from './routes/assetRental.route'
 import assetLogs from './routes/assetLogs.route'
 
 
-
-
 import { cors } from 'hono/cors';
 const app = new Hono();
 
@@ -46,7 +44,7 @@ app.route('/assetRental', assetRental);
 app.route('/statistic', statistic);
 app.route('/assetLogs', assetLogs);
 
-const port = Number(process.env.PORT) || 3000
+const port = Number(process.env.PORT)
 app.get('/', (c) => {
   return c.json({
     status: 'ok',
