@@ -50,6 +50,7 @@ const port = Number(process.env.PORT) || 3000
 app.get("/health", (c) => c.json({ ok: true }));
 Bun.serve({
   port,
+  hostname: "0.0.0.0",
   fetch: app.fetch
 })
 
