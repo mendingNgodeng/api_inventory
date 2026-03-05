@@ -47,7 +47,7 @@ app.route('/statistic', statistic);
 app.route('/assetLogs', assetLogs);
 
 const port = Number(process.env.PORT) || 3000
-
+app.get("/health", (c) => c.json({ ok: true }));
 Bun.serve({
   port,
   fetch: app.fetch
