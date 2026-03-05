@@ -3,7 +3,9 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
-    "retention": "bun src/jobs/retention.job.ts"
+    "retention": "bun src/jobs/retention.job.ts",
+     "build": "bunx prisma generate"
+     
   },
   "dependencies": {
     "@prisma/client": "6.19.0",
