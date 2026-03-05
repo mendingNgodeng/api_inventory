@@ -47,7 +47,12 @@ app.route('/statistic', statistic);
 app.route('/assetLogs', assetLogs);
 
 const port = Number(process.env.PORT) || 3000
-app.get("/health", (c) => c.json({ ok: true }));
+app.get('/', (c) => {
+  return c.json({
+    status: 'ok',
+    service: 'inventory-api'
+  })
+})
 Bun.serve({
   port,
   hostname: "0.0.0.0",
