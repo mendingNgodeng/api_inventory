@@ -1,17 +1,21 @@
 import { RetentionService } from "../services/retention.services";
+import { prisma } from "../utils/prisma";
 
 async function main() {
-  try {
-    console.log("Running retention job...");
-
-    const result = await RetentionService.run();
-
-    console.log("Retention result:", result);
-  } catch (err) {
-    console.error("Retention job failed:", err);
-  } finally {
-    process.exit(0);
-  }
+  console.log("Running retention job...");
+  const result = await RetentionService.run();
+  console.log("Retention result:", result);
 }
 
-main();
+main()
+  .then(async () => {
+    // penting: tutup koneksi prisma
+    await prisma.$disconnect();
+    // penting: biar Railway job selesai
+    process.exit(0);
+  })
+  .catch(async (err) => {
+    console.error("Retention job failed:", err);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
