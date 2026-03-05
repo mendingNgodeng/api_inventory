@@ -44,7 +44,7 @@ app.route('/assetRental', assetRental);
 app.route('/statistic', statistic);
 app.route('/assetLogs', assetLogs);
 
-const port = Number(process.env.PORT)
+const port = Number(process.env.PORT || 3000)
 app.get('/', (c) => {
   return c.json({
     status: 'ok',
