@@ -1,3 +1,4 @@
+// src/jobs/retention.job.ts
 import { RetentionService } from "../services/retention.services";
 import { prisma } from "../utils/prisma";
 
@@ -9,13 +10,14 @@ async function main() {
 
 main()
   .then(async () => {
-    // penting: tutup koneksi prisma
+    // ✅ tutup semua koneksi DB
     await prisma.$disconnect();
-    // penting: biar Railway job selesai
-    process.exit(0);
+
+    // ✅ kasih jeda kecil biar event-loop bersih (kadang bun/prisma masih nahan handle)
+    setTimeout(() => process.exit(0), 100);
   })
   .catch(async (err) => {
     console.error("Retention job failed:", err);
     await prisma.$disconnect();
-    process.exit(1);
+    setTimeout(() => process.exit(1), 100);
   });
