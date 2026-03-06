@@ -326,8 +326,8 @@ static async finishRental(
             to: afterRentedQty,
             deleted_row: rentedDeleted,
           },
-
-          image_after_rental: updated.image_after_rental ?? null,
+          // eating too much space for database
+          // image_after_rental: updated.image_after_rental ?? null,
         },
       }),
     });
