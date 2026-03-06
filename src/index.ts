@@ -12,7 +12,7 @@ import assetMaintenance from './routes/assetMaintenance.route';
 import statistic from './routes/statistic.route';
 import assetRental from './routes/assetRental.route'
 import assetLogs from './routes/assetLogs.route'
-import divisi from './routes/Divisi.route'
+// import divisi from './routes/Divisi.route'
 
 
 import { cors } from 'hono/cors';
@@ -44,7 +44,7 @@ app.route('/assetMaintenance', assetMaintenance);
 app.route('/assetRental', assetRental);
 app.route('/statistic', statistic);
 app.route('/assetLogs', assetLogs);
-app.route('/divisi', divisi);
+// app.route('/divisi', divisi);
 
 
 const port = Number(process.env.PORT || 3000)
