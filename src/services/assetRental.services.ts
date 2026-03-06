@@ -213,14 +213,14 @@ static async finishRental(
     if (rental.status === "SELESAI") throw new Error("Rental sudah selesai");
     if (rental.status === "DIBATALKAN") throw new Error("Rental sudah dibatalkan");
 
-    // ✅ ambil customer untuk log (optional tapi enak)
+    // ambil customer untuk log (optional tapi enak)
     const customer = await tx.rentalCustomer.findUnique({
       where: { id_rental_customer: rental.id_rental_customer },
       select: { id_rental_customer: true, name: true, phone: true },
     });
 
     // stock asal (source stock TERSEDIA)
-    // ✅ include asset+location buat log
+    // include asset+location buat log
     const goodStock = await tx.assetStock.findUnique({
       where: { id_asset_stock: rental.id_asset_stock },
       include: {
@@ -245,7 +245,7 @@ static async finishRental(
     if (!rentedStock) throw new Error("Stock DISEWA tidak ditemukan");
     if (rentedStock.quantity < rental.quantity) throw new Error("Quantity DISEWA tidak valid");
 
-    // ✅ simpan qty before untuk log
+    // simpan qty before untuk log
     const beforeRentedQty = rentedStock.quantity;
     const beforeGoodQty = goodStock.quantity;
 
@@ -287,7 +287,7 @@ static async finishRental(
       },
     });
 
-    // ✅ LOG: RENTAL_FINISH
+    // LOG: RENTAL_FINISH
     await createAssetLog(tx, {
       action: "RENTAL_FINISH",
       description: buildLogDescription({
@@ -350,13 +350,13 @@ static async cancelRental(id: number) {
     if (rental.status === "SELESAI") throw new Error("Rental sudah selesai");
     if (rental.status === "DIBATALKAN") throw new Error("Rental sudah dibatalkan");
 
-    // ✅ ambil customer untuk log (optional)
+    // ambil customer untuk log (optional)
     const customer = await tx.rentalCustomer.findUnique({
       where: { id_rental_customer: rental.id_rental_customer },
       select: { id_rental_customer: true, name: true, phone: true },
     });
 
-    // ✅ include asset+location untuk log
+    // include asset+location untuk log
     const goodStock = await tx.assetStock.findUnique({
       where: { id_asset_stock: rental.id_asset_stock },
       include: {
@@ -380,7 +380,7 @@ static async cancelRental(id: number) {
     if (!rentedStock) throw new Error("Stock DISEWA tidak ditemukan");
     if (rentedStock.quantity < rental.quantity) throw new Error("Quantity DISEWA tidak valid");
 
-    // ✅ simpan qty before untuk log
+    // simpan qty before untuk log
     const beforeRentedQty = rentedStock.quantity;
     const beforeGoodQty = goodStock.quantity;
 
@@ -415,7 +415,7 @@ static async cancelRental(id: number) {
       data: { status: "DIBATALKAN" },
     });
 
-    // ✅ LOG: RENTAL_CANCEL
+    // LOG: RENTAL_CANCEL
     await createAssetLog(tx, {
       action: "RENTAL_CANCEL",
       description: buildLogDescription({
