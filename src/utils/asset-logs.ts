@@ -3,6 +3,9 @@ import { PrismaClient } from "@prisma/client";
 type TxLike = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
 export type AssetLogAction =
+  | "DIVISI_UPDATE" 
+  | "DIVISI_CREATE"
+  | "DIVISI_DELETE"
   | "ASSET_STOCK_UPDATE" 
   | "ASSET_STOCK_CREATE"
   | "ASSET_STOCK_DELETE"

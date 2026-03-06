@@ -89,6 +89,7 @@ model AssetStock {
   id_asset_stock Int @id @default(autoincrement())
   id_asset       Int
   id_location    Int
+ // id_divisi      Int
 
   condition AssetCondition
   status    AssetStockStatus
@@ -99,14 +100,13 @@ model AssetStock {
 
   asset    Asset    @relation(fields: [id_asset], references: [id_assets])
   location Location @relation(fields: [id_location], references: [id_location])
+ // divisi   divisi   @relation(fields: [id_divisi], references: [id_divisi])
 
 
   borrowed     AssetBorrowed[]      // this
   maintenance  AssetMaintenance[]   // DAN this
   rentals      AssetRental[]
   @@unique([id_asset, id_location,condition,status])
-  // @@unique([id_asset, id_location, condition, status])
-
 }
 
 
@@ -116,6 +116,13 @@ model Location {
   description String?
 
   stocks       AssetStock[]
+}
+model Divisi {
+  id_divisi Int @id @default(autoincrement())
+  name        String
+  description String?
+
+//  stocks       AssetStock[]
 }
 
 enum BorrowStatus {
