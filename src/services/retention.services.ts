@@ -52,11 +52,51 @@ export class RetentionService {
         },
       });
 
+        // ambil customer rental yang pictureKtp sudah null / kosong
+      // DAN sudah tidak punya rental aktif
+      const inactiveCustomers = await tx.rentalCustomer.findMany({
+        where: {
+          OR: [
+            { pictureKtp: null },
+            { pictureKtp: "" },
+          ],
+          rentals: {
+            none: {},
+          },
+        },
+        select: {
+          id_rental_customer: true,
+        },
+      });
+
+      let deletedRentalCustomers = 0;
+
+      if (inactiveCustomers.length > 0) {
+        const ids = inactiveCustomers.map((c) => c.id_rental_customer);
+
+        const deletedCustomers = await tx.rentalCustomer.deleteMany({
+          where: {
+            id_rental_customer: { in: ids },
+          },
+        });
+
+        deletedRentalCustomers = deletedCustomers.count;
+      }
+      // hapus blacklist token yang expired
+      const now = new Date();
+      const deletedBlacklistedTokens = await tx.blacklistedToken.deleteMany({
+        where: {
+          expiredAt: { lt: now },
+        },
+      });
+
       return {
         deletedLogs: deletedLogs.count,
         deletedBorrow: deletedBorrow.count,
         deletedRental: deletedRental.count,
         deletedMaintenance: deletedMaint.count,
+        deletedRentalCustomers,
+        deletedBlacklistedTokens: deletedBlacklistedTokens.count,
       };
     });
 
