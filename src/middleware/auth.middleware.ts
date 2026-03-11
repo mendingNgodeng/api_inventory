@@ -21,10 +21,9 @@ export const authMiddleware = async (c: Context, next: Next) => {
     }
 
     const decoded = await verifyToken(token);
-
+// console.log("DECODED TOKEN:", decoded);
     c.set('user', decoded);
     c.set('userId', decoded.id);
-
     await next();
   } catch (err) {
     return c.json({ error: 'Token invalid' }, 401);
@@ -43,17 +42,17 @@ export const requireRole = (role: string) => {
   };
 };
 
-// not used
+
 // ownership
 export const requireSelfOrAdmin = async (c: Context, next: Next) => {
   const user = c.get('user');
-  const targetId = c.req.param('id_user');
+  const targetId = c.req.param('id');
 
   // admin = lolos
   if (user.role === 'ADMIN') return next();
 
   // user biasa = hanya boleh akses dirinya
-  if (user.id_user !== targetId) {
+  if (String(user.id) !== String(targetId)) {
     return c.json({ error: 'Tidak boleh akses user lain' }, 403);
   }
 

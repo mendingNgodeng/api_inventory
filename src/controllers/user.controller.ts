@@ -1,13 +1,17 @@
 import { Context } from 'hono';
 import { userService } from '../services/user.services';
-import { Schema } from '../validation/user.validation';
+import { Schema,UpdateSchema } from '../validation/user.validation';
+import { id } from 'zod/v4/locales';
 
 export class userController {
 
   static async getAll(c: Context) {
     try {
-      const id = c.get("id_user")
-      const data = await userService.getAll(id);
+      const id_user = c.get("userId")
+      // console.log(Number(id_user))
+      // console.log(c.get("userId"))
+
+      const data = await userService.getAll(id_user);
 
       return c.json({
         success: true,
@@ -25,7 +29,8 @@ export class userController {
   static async getById(c: Context) {
     try {
       const { id } = c.req.param();
-      const id_user = c.get("id_user")
+      const id_user = c.get("userId")
+
 
       const id_data = id ?? id_user
 
@@ -61,6 +66,8 @@ export class userController {
 
   static async create(c: Context) {
     try {
+      const id_user = c.get("userId")
+
       const body = await c.req.json();
       const result = Schema.safeParse(body);
 
@@ -72,7 +79,7 @@ export class userController {
         }, 400);
       }
 
-      const data = await userService.create(result.data);
+      const data = await userService.create(id_user,result.data);
 
       return c.json({
         success: true,
@@ -90,6 +97,8 @@ export class userController {
 
   static async update(c: Context) {
       try {
+      const id_user = c.get("userId")
+
         const { id } = c.req.param();
         const numericId = Number(id);
   
@@ -98,7 +107,7 @@ export class userController {
         }
   
         const body = await c.req.json();
-        const result = Schema.safeParse(body);
+        const result = UpdateSchema.safeParse(body);
   
         if (!result.success) {
           return c.json({
@@ -108,7 +117,7 @@ export class userController {
           }, 400);
         }
   
-        const data = await userService.update(numericId, result.data);
+        const data = await userService.update(id_user,numericId, result.data);
   
         return c.json({
           success: true,
@@ -126,6 +135,8 @@ export class userController {
 
   static async delete(c: Context) {
     try {
+      const id_user = c.get("userId")
+
       const { id } = c.req.param();
     const numericId = Number(id);
 
@@ -135,7 +146,7 @@ export class userController {
         message: 'ID tidak valid'
       }, 400);
     }
-      await userService.delete(numericId);
+      await userService.delete(id_user,numericId);
 
       return c.json({
         success: true,

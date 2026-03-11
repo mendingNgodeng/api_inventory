@@ -6,7 +6,7 @@ import { rateLimit } from '../middleware/rateLimit';
 const user = new Hono();
 
 user.get(
-  '/', 
+  '/', authMiddleware,
     rateLimit({
      windowSec:Number(process.env.rl_read_windowsSecs),
       max:Number(process.env.rl_read_max),

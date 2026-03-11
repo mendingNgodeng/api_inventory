@@ -90,8 +90,8 @@ export class AuthService {
     // console.log("TOKEN:", token);
 
 // console.log("TEST VERIFY:", await verifyToken(token));
-
-    return { user, token };
+const { password: _, ...safeUser } = user;
+return { user: safeUser, token };
   }
   static async logout(token: string) {
   const decoded: any = await verifyToken(token);
