@@ -4,11 +4,12 @@ import { Context } from 'hono';
 import { AssetBorrowService } from '../services/assetBorrow.services';
 import { borrowSchema,UsedSchema} from '../validation/assetBorrow.validation';
 
-export class assetBorrowController {
+export class assetBorrowKaryawanController {
 
   static async getAll(c: Context) {
     try {
-      const data = await AssetBorrowService.getAll();
+      const id_user = c.get("userId")
+      const data = await AssetBorrowService.getAllById(id_user);
 
       return c.json({
         success: true,
@@ -22,42 +23,6 @@ export class assetBorrowController {
       }, 500);
     }
   }
-
-  
-static async createUsed(c: Context) {
-  try {
-    const id_user = c.get("userId")
-    const body = await c.req.json();
-    const result = UsedSchema.safeParse(body);
-
-    if (!result.success) {
-      return c.json({
-        success: false,
-        message: "Validasi gagal",
-        errors: result.error.flatten().fieldErrors
-      }, 400);
-    }
-
-    const data = await AssetBorrowService.createBorrow(
-      id_user,
-      result.data,
-      "DIPAKAI","DIPAKAI"
-    );
-
-    return c.json({
-      success: true,
-      message: "Asset berhasil dipakai",
-      data
-    }, 201);
-
-  } catch (error) {
-    return c.json({
-      success: false,
-      message: error instanceof Error ? error.message : "Internal server error"
-    }, 500);
-  }
-}
-
 
 static async createBorrow(c: Context) {
   try {

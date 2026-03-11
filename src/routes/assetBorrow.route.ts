@@ -1,12 +1,15 @@
 import { Hono } from 'hono';
 import {  assetBorrowController } from '../controllers/assetBorrow.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
+import {  assetBorrowKaryawanController } from '../controllers/assetBorrowKaryawan.controller';
+import { authMiddleware, requireRole,requireSelfOrAdmin } from '../middleware/auth.middleware';
 import { rateLimit } from '../middleware/rateLimit';
 
 const assetBorrow = new Hono();
 
 assetBorrow.get(
   '/',
+  authMiddleware,
+  requireRole("KARYAWAN","ADMIN"),
     rateLimit({
     windowSec:Number(process.env.rl_read_windowsSecs),
     max:Number(process.env.rl_read_max),
@@ -17,6 +20,8 @@ assetBorrow.get(
 
 assetBorrow.get(
   '/:id',
+  authMiddleware,
+requireSelfOrAdmin,
     rateLimit({
     windowSec:Number(process.env.rl_read_windowsSecs),
     max:Number(process.env.rl_read_max),
@@ -31,7 +36,9 @@ assetBorrow.get(
 // );
 
 assetBorrow.post(
-  '/used', authMiddleware,
+  '/used', 
+  authMiddleware,
+  requireRole("ADMIN"),
      rateLimit({
      windowSec:Number(process.env.rl_write_windowsSecs),
     max:Number(process.env.rl_write_max),
@@ -43,6 +50,8 @@ assetBorrow.post(
 
 assetBorrow.post(
   '/borrow',
+  authMiddleware,
+  requireRole("KARYAWAN","ADMIN"),
       rateLimit({
      windowSec:Number(process.env.rl_write_windowsSecs),
     max:Number(process.env.rl_write_max),
@@ -58,6 +67,7 @@ assetBorrow.post(
 
 assetBorrow.put(
   '/:id/return',
+  authMiddleware,
   rateLimit({
    windowSec:Number(process.env.rl_delete_windowsSecs),
     max:Number(process.env.rl_delete_max),

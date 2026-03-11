@@ -7,6 +7,7 @@ const assetStock = new Hono();
 
 assetStock.get(
   '/',
+  authMiddleware,  
   rateLimit({
      windowSec:Number(process.env.rl_read_windowsSecs),
       max:Number(process.env.rl_read_max),
@@ -17,6 +18,7 @@ assetStock.get(
 
 assetStock.get(
   '/:id',
+  authMiddleware,  
    rateLimit({
      windowSec:Number(process.env.rl_read_windowsSecs),
       max:Number(process.env.rl_read_max),

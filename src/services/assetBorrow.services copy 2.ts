@@ -86,9 +86,9 @@ static async getAllById(id:number) {
 
 
   static async createBorrow(
-  actor_id:number,
+  id_user:number,
   input: {
-    borrower_id?: number;
+    id_user?: number;
     id_asset_stock: number;
     quantity: number;
   },
@@ -97,16 +97,15 @@ static async getAllById(id:number) {
 ) {
   if (input.quantity <= 0) throw new Error("Quantity harus lebih dari 0");
 
- const borrowerUserId =
-    status_value === "DIPINJAM" ? (input.borrower_id ?? actor_id) : null;
-
-  if (status_value === "DIPINJAM" && !borrowerUserId) {
+  if (status_value === "DIPINJAM" && !input.id_user) {
     throw new Error("Peminjaman harus memiliki user");
   }
 
-  if (status_value === "DIPAKAI" && input.borrower_id) {
+  if (status_value === "DIPAKAI" && input.id_user) {
     throw new Error("Asset dipakai kantor tidak boleh memiliki user");
   }
+
+  
 
   return prisma.$transaction(async (tx) => {
     const stock = await tx.assetStock.findUnique({
@@ -170,17 +169,15 @@ static async getAllById(id:number) {
     }
 
     // 3) Buat record borrow
-     const borrow = await tx.assetBorrowed.create({
-        data: {
-          id_user: borrowerUserId,
-          id_asset_stock: stock.id_asset_stock,
-          quantity: input.quantity,
-          status: status_value,
-        },
-        include: { user: true },
-      });
-    
-
+    const borrow = await tx.assetBorrowed.create({
+      data: {
+        id_user: input.id_user ?? null,
+        id_asset_stock: stock.id_asset_stock,
+        quantity: input.quantity,
+        status: status_value,
+      },
+      include: { user: true },
+    });
 
     // action log tergantung status_value
     const action =
@@ -189,17 +186,15 @@ static async getAllById(id:number) {
     // title juga bisa beda biar kebaca enak di history
     const title =
       status_value === "DIPINJAM" ? "Peminjaman dibuat" : "Pemakaian dibuat";
-const actor = await tx.user.findUnique({
-  where: { id_user: actor_id },
-});
+
     await createAssetLog(tx, {
       action,
       description: buildLogDescription({
         title,
         detail:
           status_value === "DIPINJAM"
-           ? `Asset "${stock.asset.asset_name} (${stock.asset.asset_code})" dipinjam untuk "${borrow.user?.name ?? "-"}" qty ${input.quantity} oleh "${actor?.name ?? "-"}"`
-    : `Asset "${stock.asset.asset_name} (${stock.asset.asset_code})" dipakai kantor qty ${input.quantity} oleh "${actor?.name ?? "-"}"`,
+            ? `Asset "${stock.asset.asset_name} (${stock.asset.asset_code})" dipinjam oleh "${borrow.user?.name ?? "-"}" qty ${input.quantity}`
+            : `Asset "${stock.asset.asset_name} (${stock.asset.asset_code})" dipakai kantor qty ${input.quantity}`,
         meta: {
           id_asset_borrowed: borrow.id_asset_borrowed,
           id_asset_stock_origin: stock.id_asset_stock,
@@ -209,26 +204,10 @@ const actor = await tx.user.findUnique({
           asset_name: stock.asset.asset_name,
           asset_code: stock.asset.asset_code,
           location_name: stock.location.name,
-            borrower:
-    status_value === "DIPINJAM" && borrow.user
-      ? {
-          id_user: borrow.user.id_user,
-          name: borrow.user.name,
-          username: borrow.user.username,
-        }
-      : null,
-  actor: actor
-    ? {
-        id_user: actor.id_user,
-        name: actor.name,
-        username: actor.username,
-        role: actor.role,
-      }
-    : null,
-        user:
-  status_value === "DIPINJAM" && borrow.user
-    ? { id_user: borrow.user.id_user, name: borrow.user.name }
-    : null,
+          user:
+            status_value === "DIPINJAM" && borrow.user
+              ? { id_user: borrow.user.id_user, name: borrow.user.name }
+              : null, // pemakaian kantor => null
           moved_qty: input.quantity,
           origin_qty: { from: beforeOriginQty, to: updatedOrigin.quantity },
           bucket_qty: { from: beforeBucketQty, to: afterBucketQty },

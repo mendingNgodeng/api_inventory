@@ -15,17 +15,6 @@ user.get(
   userController.getAll
 );
 
-// user.get(
-//   '/own',  authMiddleware,
-//   requireSelfOrAdmin,
-//     rateLimit({
-//      windowSec:Number(process.env.rl_read_windowsSecs),
-//       max:Number(process.env.rl_read_max),
-//       keyPrefix:String(process.env.user_prefix)
-//     }),
-//   userController.getById
-// );
-
 user.get(
   '/:id', authMiddleware,
   requireSelfOrAdmin,

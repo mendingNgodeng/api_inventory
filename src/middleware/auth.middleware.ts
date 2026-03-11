@@ -30,11 +30,11 @@ export const authMiddleware = async (c: Context, next: Next) => {
   }
 };
 
-export const requireRole = (role: string) => {
+export const requireRole = (...role: string[]) => {
   return async (c: Context, next: Next) => {
     const user = c.get('user');
 
-    if (!user || user.role !== role) {
+    if (!user || !role.includes(user.role)) {
       return c.json({ error: 'Tidak punya akses' }, 403);
     }
 

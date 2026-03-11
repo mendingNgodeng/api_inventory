@@ -52,7 +52,7 @@ export class userService {
         action:"USER(KARYAWAN)_CREATE",
         description:buildLogDescription({
           title:"user(karyawan) dibuat",
-        detail: `user(karyawan) ${created.name} (${created.jabatan ?? null} - ${created.no_hp ?? null}) berhasil Oleh ${makeBy.name}(${makeBy.role})`,
+        detail: `user(karyawan) ${created.name} (${created.jabatan ?? null} - ${created.no_hp ?? null}) berhasil Oleh ${makeBy.name} (${makeBy.role})`,
           meta: {
             id_user: created.id_user,
             name: created.name,
@@ -126,7 +126,7 @@ export class userService {
         action: "USER(KARYAWAN)_UPDATE",
         description: buildLogDescription({
           title: "user(karyawan) diupdate",
-          detail: `user(karyawan) ${before.name} (${before.jabatan ?? null} - ${before.no_hp ?? null}) diupdate ${updated.name} (${updated.jabatan ?? null} - ${updated.no_hp ?? null}) Oleh ${makeBy.name}`,
+          detail: `user(karyawan) ${before.name} (${before.jabatan ?? null} - ${before.no_hp ?? null}) diupdate ${updated.name} (${updated.jabatan ?? null} - ${updated.no_hp ?? null}) Oleh ${makeBy.name} (${makeBy.role})`,
           meta: {
             id_user: id_data,
             before: {
@@ -180,7 +180,7 @@ export class userService {
         action: "USER(KARYAWAN)_DELETE",
         description: buildLogDescription({
           title: "User(karyawan) dihapus",
-          detail: `User(karyawan) "${before.name}" dihapus oleh ${makeBy.name}(${makeBy.role})`,
+          detail: `User(karyawan) "${before.name}" dihapus oleh ${makeBy.name} (${makeBy.role})`,
           meta: {
             id_user: before.id_user,
             name: before.name,

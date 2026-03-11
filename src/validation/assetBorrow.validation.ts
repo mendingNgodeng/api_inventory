@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
 export const borrowSchema = z.object({
-  id_user: z
-    .number()
-    .int("harus bilangan bulat")
-    .nonnegative("tidak boleh negatif"),
+  // borrower_id: z //refers to id_user
+  //   .number()
+  //   .int("harus bilangan bulat")
+  //   .nonnegative("tidak boleh negatif"),
+      borrower_id: z //refers to id_user
+    .number().optional(),
   id_asset_stock: z
     .number()
     .int("harus bilangan bulat")
