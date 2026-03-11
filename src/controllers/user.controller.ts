@@ -6,7 +6,8 @@ export class userController {
 
   static async getAll(c: Context) {
     try {
-      const data = await userService.getAll();
+      const id = c.get("id_user")
+      const data = await userService.getAll(id);
 
       return c.json({
         success: true,
@@ -21,11 +22,14 @@ export class userController {
     }
   }
 
-  static async get(c: Context) {
+  static async getById(c: Context) {
     try {
       const { id } = c.req.param();
+      const id_user = c.get("id_user")
 
-      const numericId = Number(id);
+      const id_data = id ?? id_user
+
+      const numericId = Number(id_data);
 
     if (isNaN(numericId)) {
       return c.json({

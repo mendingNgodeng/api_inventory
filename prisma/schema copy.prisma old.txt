@@ -1,4 +1,6 @@
-//unused
+// revisi
+
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,20 +21,24 @@ model Admin {
   role       adminRole
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+}
 
-  asset_logs AssetLogs[]
+enum userRole {
+  ADMIN
 }
 // master
 model User {
   id_user    Int      @id @default(autoincrement())
+  username   String
   name       String
   jabatan    String?
   no_hp      String?
+  password   String
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   borrowed_assets AssetBorrowed[]
-  asset_logs     AssetLogs[]
+  //asset_logs     AssetLogs[]
 }
 
 model AssetCategories {
@@ -66,22 +72,20 @@ model Asset {
   type     AssetTypes      @relation(fields: [id_asset_types], references: [id_asset_types])
 
   stocks       AssetStock[]
-  rentals      AssetRental[]
-  borrowed     AssetBorrowed[]
-  logs         AssetLogs[]
-  maintenance  AssetMaintenance[]
+  //logs         AssetLogs[]
 }
 
 enum AssetCondition {
   BAIK
   RUSAK
-  MAINTENANCE
 }
 
 enum AssetStockStatus {
   TERSEDIA
   TIDAK_TERSEDIA
+  MAINTENANCE
   DIPINJAM
+  DIPAKAI
   DISEWA
 }
 
@@ -90,6 +94,7 @@ model AssetStock {
   id_asset_stock Int @id @default(autoincrement())
   id_asset       Int
   id_location    Int
+ // id_divisi      Int
 
   condition AssetCondition
   status    AssetStockStatus
@@ -100,11 +105,13 @@ model AssetStock {
 
   asset    Asset    @relation(fields: [id_asset], references: [id_assets])
   location Location @relation(fields: [id_location], references: [id_location])
+ // divisi   divisi   @relation(fields: [id_divisi], references: [id_divisi])
 
 
   borrowed     AssetBorrowed[]      // this
   maintenance  AssetMaintenance[]   // DAN this
-  @@unique([id_asset, id_location, condition, status])
+  rentals      AssetRental[]
+  @@unique([id_asset, id_location,condition,status])
 }
 
 
@@ -115,6 +122,13 @@ model Location {
 
   stocks       AssetStock[]
 }
+model Divisi {
+  id_divisi Int @id @default(autoincrement())
+  name        String
+  description String?
+
+//  stocks       AssetStock[]
+}
 
 enum BorrowStatus {
   DIPAKAI
@@ -122,78 +136,75 @@ enum BorrowStatus {
   DIKEMBALIKAN
   TERLAMBAT
 }
-
+//asset assignment
 model AssetBorrowed {
   id_asset_borrowed Int @id @default(autoincrement())
-  id_asset          Int
   id_asset_stock    Int
-  id_user           Int
+  id_user           Int?
   quantity          Int
-  borrowed_date     DateTime
-  returned_date     DateTime?
+  borrowed_date     DateTime  @default(now())
+  returned_date     DateTime  @updatedAt
   status            BorrowStatus
 
   assetStock AssetStock @relation(fields: [id_asset_stock], references: [id_asset_stock])
-  asset Asset @relation(fields: [id_asset], references: [id_assets])
-  user  User  @relation(fields: [id_user], references: [id_user])
+  user  User?  @relation(fields: [id_user], references: [id_user])
 
+}
+enum RentalStatus {
+  AKTIF
+  SELESAI
+  DIBATALKAN
 }
 
 model RentalCustomer {
   id_rental_customer Int @id @default(autoincrement())
   name    String
   phone   String?
-  email   String?
-  address String?
-  fotoKtp String
+  pictureKtp String?
   created_at DateTime @default(now())
-
+  updated_at DateTime @updatedAt
   rentals AssetRental[]
-}
-enum RentalStatus {
-  AKTIF
-  SELESAI
 }
 
 model AssetRental {
   id_asset_rental     Int @id @default(autoincrement())
-  id_assets           Int
   id_rental_customer  Int
+  id_asset_stock      Int
   quantity            Int
   rental_start        DateTime
   rental_end          DateTime
+  returned_date       DateTime? @updatedAt
   price               Float
+  image_after_rental  String?
   status              RentalStatus
-
-  asset    Asset          @relation(fields: [id_assets], references: [id_assets])
+  assetStock AssetStock     @relation(fields: [id_asset_stock], references: [id_asset_stock])
   customer RentalCustomer @relation(fields: [id_rental_customer], references: [id_rental_customer])
 }
 
+
+//history purpose
 model AssetLogs {
   id_asset_logs Int @id @default(autoincrement())
-  id_admin      Int?
-  id_asset      Int?
-  id_user       Int?
   action        String
   description   String?
   created_at    DateTime @default(now())
+}
 
-  admin Admin @relation(fields: [id_admin], references: [id_admin])
-  asset Asset? @relation(fields: [id_asset], references: [id_assets])
-  user  User? @relation(fields: [id_user], references: [id_user])
+enum MaintenanceStatus {
+  ON_PROGRESS
+  DONE
 }
 
 model AssetMaintenance {
-  id_asset_logs    Int @id @default(autoincrement())
-  id_asset         Int
+  id_asset_maintenance    Int @id @default(autoincrement())
   id_asset_stock   Int
-  maintenance_date DateTime
+  created_at       DateTime @default(now())
   description      String?
-  cost             Float
+  cost             Float?
+  quantity         Int
   updated_at       DateTime @updatedAt
-
+  status           MaintenanceStatus @default(ON_PROGRESS)
   assetStock AssetStock @relation(fields: [id_asset_stock], references: [id_asset_stock])
-  asset Asset @relation(fields: [id_asset], references: [id_assets])
 }
 
 model BlacklistedToken {

@@ -10,25 +10,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum adminRole {
+// dalam konteks penggunaan, admin juga termasuk karyawan
+enum userRole {
   ADMIN
-}
-
-model Admin {
-  id_admin   Int      @id @default(autoincrement())
-  username   String   @unique
-  password   String
-  role       adminRole
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
+  KARYAWAN
 }
 // master
 model User {
   id_user    Int      @id @default(autoincrement())
+  username   String   @unique
   name       String
   jabatan    String?
   no_hp      String?
+  password   String
+  role       userRole
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 

@@ -1,12 +1,22 @@
 import { prisma } from '../utils/prisma';
 import { createAssetLog,buildLogDescription} from '../utils/asset-logs';
+import bcrypt from 'bcryptjs';
+
+// import { userRole } from '@prisma/client';
 
 export class userService {
 
-  static async getAll() {
-    return prisma.user.findMany();
+  static async getAll(id:number) {
+    return prisma.user.findMany({
+      where: {
+        NOT:{
+          id_user:id
+        }
+      }
+    });
   }
 
+  // will be used for profile
   static async getById(id: number) {
     return prisma.user.findUnique({
       where: { id_user:id }
@@ -15,12 +25,19 @@ export class userService {
 
   static async create(input: {
     name: string;
+    username:string;
+    // role:userRole;
+    password:string;
     jabatan?: string;
     no_hp?: string;
 
   }) {
         return prisma.$transaction(async(tx) => {
-      const created = await tx.user.create({data:input})
+          const {password} = input;
+           const hashed = await bcrypt.hash(password, 10);
+      const created = await tx.user.create(
+        {data:{...input,password:hashed, role:"KARYAWAN"}}
+      )
 
       await createAssetLog(tx,{
         action:"USER(KARYAWAN)_CREATE",
@@ -30,6 +47,7 @@ export class userService {
           meta: {
             id_user: created.id_user,
             name: created.name,
+            role:created.role,
             no_hp: created.no_hp ?? null,
             jabatan: created.jabatan ?? null,
           },
@@ -46,18 +64,41 @@ export class userService {
     name: string;
     jabatan?: string;
     no_hp?: string;
+    password:string;
+    username:string;
+
   }) {
      return prisma.$transaction(async (tx) => {
       // ambil data lama (opsional but why not?)
+
       const before = await tx.user.findUnique({
         where: { id_user: id },
       });
       if (!before) throw new Error("user tidak ditemukan");
 
-      const updated = await tx.user.update({
-        where: { id_user: id },
-        data: { ...input },
-      });
+ const dataToUpdate: {
+      name: string;
+      jabatan?: string;
+      no_hp?: string;
+      username: string;
+      password?: string;
+    } = {
+      name: input.name,
+      jabatan: input.jabatan,
+      no_hp: input.no_hp,
+      username: input.username,
+    };
+
+    if (input.password !== before.password) {
+      dataToUpdate.password = await bcrypt.hash(input.password, 10);
+    } else {
+      dataToUpdate.password = before.password;
+    }
+
+    const updated = await tx.user.update({
+      where: { id_user: id },
+      data: dataToUpdate,
+    });
 
       await createAssetLog(tx, {
         action: "USER(KARYAWAN)_UPDATE",
@@ -82,12 +123,7 @@ export class userService {
 
       return updated;
     });
-    // return prisma.user.update({
-    //   where: { id_user: id },
-    //   data: {
-    //    ...input
-    //   }
-    // });
+
   }
 
   static async delete(id: number) {

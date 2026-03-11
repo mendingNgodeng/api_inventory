@@ -47,13 +47,13 @@ export const requireRole = (role: string) => {
 // ownership
 export const requireSelfOrAdmin = async (c: Context, next: Next) => {
   const user = c.get('user');
-  const targetId = c.req.param('id');
+  const targetId = c.req.param('id_user');
 
   // admin = lolos
-  if (user.role === 'admin') return next();
+  if (user.role === 'ADMIN') return next();
 
   // user biasa = hanya boleh akses dirinya
-  if (user.id !== targetId) {
+  if (user.id_user !== targetId) {
     return c.json({ error: 'Tidak boleh akses user lain' }, 403);
   }
 
