@@ -54,6 +54,7 @@ model Asset {
   asset_code          String  @unique
   asset_name          String
   purchase_price      Float?
+  rental_price        Float?
   is_rentable         Boolean @default(false)
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt

@@ -8,7 +8,7 @@ export class assetRentalService {
       include: {
         assetStock: {
           include: {
-            asset: { select: { asset_code: true, asset_name: true } },
+            asset: { select: { asset_code: true, asset_name: true,rental_price:true } },
             location: { select: { name: true } },
           },
         },
@@ -63,7 +63,7 @@ export class assetRentalService {
     const stock = await tx.assetStock.findUnique({
       where: { id_asset_stock: input.id_asset_stock },
       include: {
-        asset: { select: { asset_name: true, asset_code: true, is_rentable: true } },
+        asset: { select: { asset_name: true, asset_code: true, is_rentable: true,rental_price:true } },
         location: { select: { name: true } },
       },
     });
@@ -80,6 +80,9 @@ export class assetRentalService {
 
     if (stock.quantity < input.quantity) {
       throw new Error("Stock tidak mencukupi");
+    }
+    if (Number(stock.asset.rental_price) <= 0) {
+      throw new Error("harga Rental Masih 0");
     }
 
     // ambil customer untuk log (opsional tapi enak)
@@ -105,6 +108,7 @@ export class assetRentalService {
         condition: "BAIK",
         status: "DISEWA",
       },
+
     });
 
     const beforeRentedQty = rentedStock?.quantity ?? 0;
@@ -131,7 +135,14 @@ export class assetRentalService {
       rentedBucketId = createdBucket.id_asset_stock;
       afterRentedQty = createdBucket.quantity;
     }
-
+const ms = new Date(input.rental_end).getTime() - new Date(input.rental_start).getTime();
+const days = ms / (1000 * 60 * 60 * 24); //rubah ke hari
+    // const times = Number(input.rental_end) - Number(input.rental_start); //bruh
+    const rental_harga = Number(stock.asset.rental_price) * days
+    const total= rental_harga * Number(input.quantity)
+    if(total <= 0 || !Number.isFinite(total)){
+      throw new Error("type data harga tidak valid");
+    }
     // 3) create record rental
     const rental = await tx.assetRental.create({
       data: {
@@ -140,7 +151,8 @@ export class assetRentalService {
         quantity: input.quantity,
         rental_start: input.rental_start,
         rental_end: input.rental_end,
-        price: input.price,
+        // price: input.price,
+        price: total,
         status: input.status ?? "AKTIF",
       },
     });

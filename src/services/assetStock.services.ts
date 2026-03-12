@@ -15,6 +15,7 @@ export class assetStockService {
             asset_code:true,
             asset_name:true,
             is_rentable:true,
+            rental_price:true,
               type: { select: { name: true } },
           category: { select: { name: true } },
           },

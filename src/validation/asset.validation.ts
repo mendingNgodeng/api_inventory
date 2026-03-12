@@ -15,7 +15,10 @@ export const Schema = z.object({
     z.number()
     .int("harus bilangan bulat")
     .nonnegative("tidak boleh negatif"),
-  rental_price: z.number().optional(),
+  rental_price: 
+    z.number()
+    .int("harus bilangan bulat")
+    .nonnegative("tidak boleh negatif"),
   asset_code: z.string().min(1, "tidak boleh kosong"),
   asset_name: z.string().min(1, "tidak boleh kosong"),
   is_rentable:z.boolean()
