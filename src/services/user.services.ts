@@ -40,20 +40,11 @@ export class userService {
           id_user:id
         }
       })
-    
-if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
-        const createdUsers = []
-
-        for (const input of inputs){
-          const {password} = input;
-          const hashed = await bcrypt.hash(password,10);
-          // check username unique validation
-          const usernames = inputs.map((i) => i.username.trim());
+     const usernames = inputs.map((i) => i.username.trim());
           // duplicate dalam request
-          const duplicateInData = usernames.filter(
-            (username,i) => {
-              usernames.indexOf(username) !== i
-            })
+       const duplicateInData = usernames.filter(
+  (username, i) => usernames.indexOf(username) !== i
+);
           
             // duplicate dalam DB
           const existingUsers = await tx.user.findMany({
@@ -74,9 +65,18 @@ if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
           new Set([...duplicateInData, ...duplicateInDb])
            );
 
+           
          if (allDuplicates.length > 0) {
       throw new Error(`Username berikut sudah ada / duplicate: ${allDuplicates.join(", ")}`);
     }
+if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
+        const createdUsers = []
+
+        for (const input of inputs){
+          const {password} = input;
+          const hashed = await bcrypt.hash(password,10);
+          // check username unique validation
+         
       //   const usernameCheck = await tx.user.findUnique({
       //   where:
       //   {
