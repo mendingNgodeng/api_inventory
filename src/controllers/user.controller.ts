@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { userService } from '../services/user.services';
-import { Schema,UpdateSchema } from '../validation/user.validation';
-import { id } from 'zod/v4/locales';
+import { Schema,UpdateSchema,ManySchema } from '../validation/user.validation';
+
 
 export class userController {
 
@@ -83,7 +83,37 @@ export class userController {
 
       return c.json({
         success: true,
-        message: 'Asset Types berhasil dibuat',
+        message: 'Users berhasil dibuat',
+        data
+      }, 201);
+
+    } catch (error) {
+      return c.json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      }, 500);
+    }
+  }
+
+  static async createMany(c: Context) {
+    try {
+      const id_user = c.get("userId")
+      const body = await c.req.json();
+      const result = ManySchema.safeParse(body);
+
+      if (!result.success) {
+        return c.json({
+          success: false,
+          message: 'Validasi gagal',
+          errors: result.error.flatten().fieldErrors
+        }, 400);
+      }
+
+      const data = await userService.createMany(id_user,result.data);
+
+      return c.json({
+        success: true,
+        message: 'USers berhasil dibuat',
         data
       }, 201);
 
@@ -121,7 +151,7 @@ export class userController {
   
         return c.json({
           success: true,
-          message: 'Asset category berhasil diupdate',
+          message: 'Users berhasil diupdate',
           data
         });
   

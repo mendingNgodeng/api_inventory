@@ -37,6 +37,17 @@ user.post(
   userController.create
 );
 
+user.post(
+  '/many', authMiddleware,
+  requireRole("ADMIN"),
+       rateLimit({
+     windowSec:Number(process.env.rl_write_windowsSecs),
+      max:Number(process.env.rl_write_max),
+      keyPrefix:String(process.env.userCreate_prefix)
+    }),
+  userController.createMany
+);
+
 user.put(
   '/:id', authMiddleware,
   requireRole("ADMIN"),
