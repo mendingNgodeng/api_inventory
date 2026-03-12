@@ -4,6 +4,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
     "esModuleInterop": true,
+    // "target": "ES2020",
     "allowSyntheticDefaultImports": true
   }
 }

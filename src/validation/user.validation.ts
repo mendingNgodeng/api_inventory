@@ -59,7 +59,7 @@ export const UpdateSchema = z.object({
   password: z
     .string()
     .optional()
-    .refine((val) => !val || val.length >= 6, {
+    .refine((val:any) => !val || val.length >= 6, {
       message: "minimal 6 karakter",
     }),
 

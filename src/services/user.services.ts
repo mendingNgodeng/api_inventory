@@ -34,7 +34,7 @@ export class userService {
     no_hp?: string;
     }[]
   ){
-    return prisma.$transaction(async(tx) => {
+    return prisma.$transaction(async(tx:any) => {
       const makeBy = await tx.user.findUnique({
         where:{
           id_user:id
@@ -48,13 +48,42 @@ if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
           const {password} = input;
           const hashed = await bcrypt.hash(password,10);
           // check username unique validation
-        const usernameCheck = await tx.user.findUnique({
-        where:
-        {
-          username:input.username
-        }
-      })
-      if(usernameCheck) throw new Error("Username ini sudah ada!: " +input.username);
+          const usernames = inputs.map((i) => i.username.trim());
+          // duplicate dalam request
+          const duplicateInData = usernames.filter(
+            (username,i) => {
+              usernames.indexOf(username) !== i
+            })
+          
+            // duplicate dalam DB
+          const existingUsers = await tx.user.findMany({
+            where:{
+              username:{
+                in:usernames,
+              }
+            },
+            select:{
+              username:true
+            }
+          })
+
+          const duplicateInDb = existingUsers.map((u:any) => u.username);
+
+          // combine all, note after : I am Ascended
+              const allDuplicates = Array.from(
+          new Set([...duplicateInData, ...duplicateInDb])
+           );
+
+         if (allDuplicates.length > 0) {
+      throw new Error(`Username berikut sudah ada / duplicate: ${allDuplicates.join(", ")}`);
+    }
+      //   const usernameCheck = await tx.user.findUnique({
+      //   where:
+      //   {
+      //     username:input.username
+      //   }
+      // })
+      // if(usernameCheck) throw new Error("Username ini sudah ada!: " +input.username);
           const created = await tx.user.create({
             data: {
               ...input,
