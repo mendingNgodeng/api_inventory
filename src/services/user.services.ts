@@ -40,14 +40,21 @@ export class userService {
           id_user:id
         }
       })
-      if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
-
+    
+if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
         const createdUsers = []
 
         for (const input of inputs){
           const {password} = input;
           const hashed = await bcrypt.hash(password,10);
-
+          // check username unique validation
+        const usernameCheck = await tx.user.findUnique({
+        where:
+        {
+          username:input.username
+        }
+      })
+      if(usernameCheck) throw new Error("Username ini sudah ada!: " +input.username);
           const created = await tx.user.create({
             data: {
               ...input,
@@ -109,6 +116,15 @@ export class userService {
         }
       })
       if(!makeBy) throw new Error("User Pembuat tidak ditemukan");
+
+        // check username unique validation
+        const usernameCheck = await tx.user.findUnique({
+        where:
+        {
+          username:input.username
+        }
+      })
+      if(usernameCheck) throw new Error("Username ini sudah ada!: " +input.username);
 
       await createAssetLog(tx,{
         action:"USER(KARYAWAN)_CREATE",

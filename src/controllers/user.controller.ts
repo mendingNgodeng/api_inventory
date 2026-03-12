@@ -30,8 +30,6 @@ export class userController {
     try {
       const { id } = c.req.param();
       const id_user = c.get("userId")
-
-
       const id_data = id ?? id_user
 
       const numericId = Number(id_data);
