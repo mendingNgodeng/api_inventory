@@ -23,6 +23,68 @@ export class userService {
     });
   }
 
+  static async createMany(
+    id:number,
+    inputs:{
+    name: string;
+    username:string;
+    // role:userRole;
+    password:string;
+    jabatan?: string;
+    no_hp?: string;
+    }[]
+  ){
+    return prisma.$transaction(async(tx) => {
+      const makeBy = await tx.user.findUnique({
+        where:{
+          id_user:id
+        }
+      })
+      if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
+
+        const createdUsers = []
+
+        for (const input of inputs){
+          const {password} = input;
+          const hashed = await bcrypt.hash(password,10);
+
+          const created = await tx.user.create({
+            data: {
+              ...input,
+              password:hashed,
+              role:"KARYAWAN"
+            }
+          })
+
+ await createAssetLog(tx,{
+        action:"USER(KARYAWAN)_CREATE",
+        description:buildLogDescription({
+          title:"user(karyawan) dibuat",
+        detail: `user(karyawan) ${created.name} (${created.jabatan ?? null} - ${created.no_hp ?? null}) berhasil Oleh ${makeBy.name} (${makeBy.role})`,
+          meta: {
+            id_user: created.id_user,
+            name: created.name,
+            role:created.role,
+            no_hp: created.no_hp ?? null,
+            jabatan: created.jabatan ?? null,
+            dibuat_oleh:{
+              username:makeBy.username,
+              name:makeBy.name,
+              role:makeBy.role,
+              no_hp: makeBy.no_hp ?? null,
+            jabatan: makeBy.jabatan ?? null,
+              }
+          },
+        }),
+      });
+      createdUsers.push(created);
+
+      }
+      return createdUsers;
+    })
+
+  }
+
   static async create(
     id:number,
     input: {
@@ -71,9 +133,6 @@ export class userService {
       });
       return created;
     });
-    // return prisma.user.create({
-    //   data: input
-    // });
   }
 
   static async update(
