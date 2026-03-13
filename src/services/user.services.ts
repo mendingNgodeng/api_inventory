@@ -275,7 +275,6 @@ if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
       if (!before) throw new Error("data tidak ditemukan");
       if (!makeBy) throw new Error("User Pembuat tidak ditemukan");
 
-
       const deleted = await tx.user.delete({
         where: { id_user: id },
       });

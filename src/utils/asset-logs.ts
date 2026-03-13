@@ -31,6 +31,7 @@ export type AssetLogAction =
   | "BORROW_RETURN"
   | "USED_CREATE"
   | "USED_RETURN"
+  | "RENTAL_PAYMENT"
   | "RENTAL_CREATE"
   | "RENTAL_FINISH"
   | "RENTAL_CANCEL"

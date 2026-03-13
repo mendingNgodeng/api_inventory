@@ -147,6 +147,12 @@ enum RentalStatus {
   DIBATALKAN
 }
 
+enum PaymentStatus {
+  BELUM_BAYAR
+  DP
+  LUNAS
+}
+
 model RentalCustomer {
   id_rental_customer Int @id @default(autoincrement())
   name    String
@@ -167,6 +173,10 @@ model AssetRental {
   returned_date       DateTime? @updatedAt
   price               Float
   image_after_rental  String?
+  dp_amount           Float @default(0)
+  remaining_amount    Float @default(0)
+  payment_status      PaymentStatus @default(BELUM_BAYAR)
+
   status              RentalStatus
   assetStock AssetStock     @relation(fields: [id_asset_stock], references: [id_asset_stock])
   customer RentalCustomer @relation(fields: [id_rental_customer], references: [id_rental_customer])

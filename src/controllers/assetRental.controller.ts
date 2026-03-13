@@ -4,6 +4,7 @@ import {
   CreateAssetRentalSchema,
   UpdateAssetRentalSchema,
   FinishRentalSchema,
+  payRental
 } from "../validation/assetRental.validation";
 
 export class assetRentalController {
@@ -129,6 +130,45 @@ export class assetRentalController {
     }
   }
 
+
+    static async payRental(c: Context) {
+    try {
+      const { id } = c.req.param();
+      const numericId = Number(id);
+
+      if (isNaN(numericId)) {
+        return c.json({ success: false, message: "ID tidak valid" }, 400);
+      }
+
+      // body optional (boleh kosong)
+      const body = await c.req.json().catch(() => ({}));
+      const result = payRental.safeParse(body);
+
+      if (!result.success) {
+        return c.json(
+          {
+            success: false,
+            message: "Validasi gagal",
+            errors: result.error.flatten().fieldErrors,
+          },
+          400
+        );
+      }
+
+      const data = await assetRentalService.payRental(numericId, result.data as any);
+
+      return c.json({
+        success: true,
+        message: "Rental berhasil diselesaikan",
+        data,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        return c.json({ success: false, message: error.message }, 400);
+      }
+      return c.json({ success: false, message: "Internal server error" }, 500);
+    }
+  }
   /**
    * CANCEL RENTAL:
    * PUT /asset-rentals/:id/cancel
@@ -156,56 +196,56 @@ export class assetRentalController {
       return c.json({ success: false, message: "Internal server error" }, 500);
     }
   }
-   static async delete(c: Context) {
-      try {
-        const { id } = c.req.param();
-      const numericId = Number(id);
+  //  static async delete(c: Context) {
+  //     try {
+  //       const { id } = c.req.param();
+  //     const numericId = Number(id);
   
-      if (isNaN(numericId)) {
-        return c.json({
-          success: false,
-          message: 'ID tidak valid'
-        }, 400);
-      }
-        await assetRentalService.delete(numericId);
+  //     if (isNaN(numericId)) {
+  //       return c.json({
+  //         success: false,
+  //         message: 'ID tidak valid'
+  //       }, 400);
+  //     }
+  //       await assetRentalService.delete(numericId);
   
-        return c.json({
-          success: true,
-          message: 'Data berhasil dihapus'
-        });
+  //       return c.json({
+  //         success: true,
+  //         message: 'Data berhasil dihapus'
+  //       });
   
-      } catch (error) {
-        return c.json({
-          success: false,
-          message: error instanceof Error ? error.message : 'Internal server error'
-        }, 400);
-      }
-    }
+  //     } catch (error) {
+  //       return c.json({
+  //         success: false,
+  //         message: error instanceof Error ? error.message : 'Internal server error'
+  //       }, 400);
+  //     }
+  //   }
 
-      static async deleteAllNonActive(c: Context) {
-      try {
-        const { id } = c.req.param();
-      const numericId = Number(id);
+    //   static async deleteAllNonActive(c: Context) {
+    //   try {
+    //     const { id } = c.req.param();
+    //   const numericId = Number(id);
   
-      if (isNaN(numericId)) {
-        return c.json({
-          success: false,
-          message: 'ID tidak valid'
-        }, 400);
-      }
-        await assetRentalService.deleteAllNonActive();
+    //   if (isNaN(numericId)) {
+    //     return c.json({
+    //       success: false,
+    //       message: 'ID tidak valid'
+    //     }, 400);
+    //   }
+    //     await assetRentalService.deleteAllNonActive();
   
-        return c.json({
-          success: true,
-          message: 'Data berhasil dihapus'
-        });
+    //     return c.json({
+    //       success: true,
+    //       message: 'Data berhasil dihapus'
+    //     });
   
-      } catch (error) {
-        return c.json({
-          success: false,
-          message: error instanceof Error ? error.message : 'Internal server error'
-        }, 400);
-      }
-    }
+    //   } catch (error) {
+    //     return c.json({
+    //       success: false,
+    //       message: error instanceof Error ? error.message : 'Internal server error'
+    //     }, 400);
+    //   }
+    // }
 }
 

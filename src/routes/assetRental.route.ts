@@ -50,6 +50,17 @@ assetRental.put(
 );
 
 assetRental.put(
+  '/:id/pay',
+  authMiddleware,
+      rateLimit({
+  windowSec:Number(process.env.rl_write_windowsSecs),
+   max:Number(process.env.rl_write_max),
+   keyPrefix:String(process.env.asset_rentalFinish_prefix)
+ }),
+  assetRentalController.payRental
+);
+
+assetRental.put(
   '/:id/cancel',
   authMiddleware,
     rateLimit({
@@ -60,28 +71,28 @@ assetRental.put(
   assetRentalController.cancel
 );
 
-// just  the non active
-assetRental.delete(
-  '/:id',
-  authMiddleware,
-  rateLimit({
-  windowSec:Number(process.env.rl_delete_windowsSecs),
-   max:Number(process.env.rl_delete_max),
-   keyPrefix:String(process.env.asset_rentalDelete_prefix)
- }),
-  assetRentalController.delete
-);
+// // just  the non active
+// assetRental.delete(
+//   '/:id',
+//   authMiddleware,
+//   rateLimit({
+//   windowSec:Number(process.env.rl_delete_windowsSecs),
+//    max:Number(process.env.rl_delete_max),
+//    keyPrefix:String(process.env.asset_rentalDelete_prefix)
+//  }),
+//   assetRentalController.delete
+// );
 
-// All the non active
-assetRental.delete(
-  '/nonActive',
-  authMiddleware,
-    rateLimit({
-  windowSec:Number(process.env.rl_delete_windowsSecs),
-   max:Number(process.env.rl_delete_max),
-   keyPrefix:String(process.env.asset_rentalDelete_prefix)
- }),
-  assetRentalController.deleteAllNonActive
-);
+// // All the non active
+// assetRental.delete(
+//   '/nonActive',
+//   authMiddleware,
+//     rateLimit({
+//   windowSec:Number(process.env.rl_delete_windowsSecs),
+//    max:Number(process.env.rl_delete_max),
+//    keyPrefix:String(process.env.asset_rentalDelete_prefix)
+//  }),
+//   assetRentalController.deleteAllNonActive
+// );
 
 export default assetRental;

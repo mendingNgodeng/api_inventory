@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const RentalStatusEnum = z.enum([ "AKTIF", "SELESAI", "DIBATALKAN"]);
+export const RentalPaymentStatus = z.enum([ "BELUM_BAYAR", "DP", "LUNAS"]);
+
 
 // number preprocess (biar string dari form aman)
 const intField = z.preprocess(
@@ -58,8 +60,11 @@ export const CreateAssetRentalSchema = z
     quantity: intPositive("Quantity minimal 1"),
     rental_start: dateField,
     rental_end: dateField,
-    price: numberNonNegative("Harga tidak boleh negatif"),
+    // price: numberNonNegative("Harga tidak boleh negatif"),
+    dp_amount: numberNonNegative("Harga tidak boleh negatif").optional(),
+    // remaining_amount: numberNonNegative("Harga tidak boleh negatif").optional(),
     status: RentalStatusEnum.optional().default("AKTIF"),
+    payment_status: RentalPaymentStatus.optional().default("BELUM_BAYAR"),
   })
   .superRefine((val, ctx) => {
     if (val.rental_end <= val.rental_start) {
@@ -89,9 +94,16 @@ export const UpdateAssetRentalSchema = z
     }
   });
 
+
+
 // FINISH payload: foto optional + boleh update condition (kalau kamu mau nanti)
 export const FinishRentalSchema = z.object({
   image_after_rental: base64ImageOptional,
+});
+
+export const payRental = z.object({
+  payment_amount: numberNonNegative("Payment Amount Tidak Valid"),
+  payment_note:z.string().optional()
 });
 
 // CANCEL payload (kalau butuh reason nanti bisa ditambah)

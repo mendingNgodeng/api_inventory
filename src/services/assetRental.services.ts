@@ -53,6 +53,8 @@ export class assetRentalService {
   quantity: number;
   rental_start: Date;
   rental_end: Date;
+  dp_amount:number;
+  remaining_amount:number;
   price: number;
   status?: RentalStatus; // default AKTIF
 }) {
@@ -84,7 +86,9 @@ export class assetRentalService {
     if (Number(stock.asset.rental_price) <= 0) {
       throw new Error("harga Rental Masih 0");
     }
-
+    // if (Number(stock.asset.rental_price) <= 0) {
+    //   throw new Error("harga Rental Masih 0");
+    // }
     // ambil customer untuk log (opsional tapi enak)
     const customer = await tx.rentalCustomer.findUnique({
       where: { id_rental_customer: input.id_rental_customer },
@@ -108,7 +112,6 @@ export class assetRentalService {
         condition: "BAIK",
         status: "DISEWA",
       },
-
     });
 
     const beforeRentedQty = rentedStock?.quantity ?? 0;
@@ -135,14 +138,38 @@ export class assetRentalService {
       rentedBucketId = createdBucket.id_asset_stock;
       afterRentedQty = createdBucket.quantity;
     }
+    // total harga sebelum DP
 const ms = new Date(input.rental_end).getTime() - new Date(input.rental_start).getTime();
-const days = ms / (1000 * 60 * 60 * 24); //rubah ke hari
+const days = Math.ceil(ms / (1000 * 60 * 60 * 24)); //rubah ke hari, bulat ke atas
     // const times = Number(input.rental_end) - Number(input.rental_start); //bruh
     const rental_harga = Number(stock.asset.rental_price) * days
     const total= rental_harga * Number(input.quantity)
     if(total <= 0 || !Number.isFinite(total)){
       throw new Error("type data harga tidak valid");
     }
+
+    // DP jika ada
+
+const dpAmount = Number(input.dp_amount ?? 0);
+
+if (!Number.isFinite(dpAmount) || dpAmount < 0) {
+  throw new Error("DP tidak valid");
+}
+
+
+    if ( dpAmount  > Number(total)) {
+      throw new Error("Total harga melebihi DP!");
+    }
+    const after_dp =  Number(total) - dpAmount
+
+      // status payment
+      let paymentStatus: "BELUM_BAYAR" | "DP" | "LUNAS" = "BELUM_BAYAR";
+
+      if (dpAmount > 0 && dpAmount < total) {
+        paymentStatus = "DP";
+      } else if (dpAmount === total) {
+        paymentStatus = "LUNAS";
+      }
     // 3) create record rental
     const rental = await tx.assetRental.create({
       data: {
@@ -151,8 +178,10 @@ const days = ms / (1000 * 60 * 60 * 24); //rubah ke hari
         quantity: input.quantity,
         rental_start: input.rental_start,
         rental_end: input.rental_end,
-        // price: input.price,
         price: total,
+        dp_amount:dpAmount,
+        remaining_amount:after_dp,
+        payment_status: paymentStatus,
         status: input.status ?? "AKTIF",
       },
     });
@@ -183,7 +212,10 @@ const days = ms / (1000 * 60 * 60 * 24); //rubah ke hari
           },
 
           price: rental.price,
+          remaining_amount: rental.remaining_amount,
+          dp_amount: rental.dp_amount,
           status: rental.status,
+          payment_status: rental.payment_status,
 
           moved_qty: input.quantity,
           origin_qty: { from: beforeOriginQty, to: updatedOrigin.quantity },
@@ -214,7 +246,9 @@ const days = ms / (1000 * 60 * 60 * 24); //rubah ke hari
   // Selesai rental: set status SELESAI + balikin stock
 static async finishRental(
   id: number,
-  input?: { image_after_rental?: string }
+  input?: { 
+    image_after_rental?: string; 
+  }
 ) {
   return prisma.$transaction(async (tx) => {
     const rental = await tx.assetRental.findUnique({
@@ -329,6 +363,7 @@ static async finishRental(
           },
 
           price: rental.price,
+          dp_amount: rental.dp_amount,
           status: { from: rental.status, to: updated.status },
           returned_qty: rental.quantity,
 
@@ -351,6 +386,79 @@ static async finishRental(
   });
 }
 
+static async payRental(
+  id: number,
+  input: {
+    payment_amount: number;
+    payment_note?: string;
+  }
+) {
+  return prisma.$transaction(async (tx) => {
+    const rental = await tx.assetRental.findUnique({
+      where: { id_asset_rental: id },
+    });
+
+    if (!rental) throw new Error("Data rental tidak ditemukan");
+
+    const paymentAmount = Number(input.payment_amount);
+
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      throw new Error("Nominal pembayaran tidak valid");
+    }
+
+    const currentRemaining = Number(rental.remaining_amount ?? 0);
+
+    if (currentRemaining <= 0) {
+      throw new Error("Rental ini sudah lunas");
+    }
+
+    if (paymentAmount > currentRemaining) {
+      throw new Error("Nominal pembayaran melebihi sisa tagihan");
+    }
+
+    const newRemainingAmount = currentRemaining - paymentAmount;
+
+    let newPaymentStatus: "BELUM_BAYAR" | "DP" | "LUNAS" = "BELUM_BAYAR";
+
+    if (newRemainingAmount === 0) {
+      newPaymentStatus = "LUNAS";
+    } else if (Number(rental.dp_amount ?? 0) > 0 || paymentAmount > 0) {
+      newPaymentStatus = "DP";
+    }
+
+    const updated = await tx.assetRental.update({
+      where: { id_asset_rental: id },
+      data: {
+        remaining_amount: newRemainingAmount,
+        payment_status: newPaymentStatus,
+      },
+    });
+
+    await createAssetLog(tx, {
+      action: "RENTAL_PAYMENT",
+      description: buildLogDescription({
+        title: "Pembayaran rental",
+        detail: `Pembayaran rental sebesar ${paymentAmount} diterima`,
+        meta: {
+          id_asset_rental: rental.id_asset_rental,
+          payment_amount: paymentAmount,
+          payment_note: input.payment_note ?? null,
+          remaining_amount: {
+            from: rental.remaining_amount,
+            to: newRemainingAmount,
+          },
+          payment_status: {
+            from: rental.payment_status,
+            to: newPaymentStatus,
+          },
+        },
+      }),
+    });
+    await this.clearKtpIfNoActiveRentals(tx, rental.id_rental_customer);
+
+    return updated;
+  });
+}
 // Batalkan rental: set status DIBATALKAN + balikin stock
 static async cancelRental(id: number) {
   return prisma.$transaction(async (tx) => {
@@ -477,12 +585,15 @@ static async cancelRental(id: number) {
   });
 }
 
-  // helper hapus KTP saat sudah selesai rental
+  // helper hapus KTP saat sudah selesai rental dan lunas
   static async clearKtpIfNoActiveRentals(tx: any, id_rental_customer: number) {
   const activeCount = await tx.assetRental.count({
     where: {
       id_rental_customer,
-      status: "AKTIF",
+    OR: [
+        { status: "AKTIF" },
+        { payment_status: { not: "LUNAS" } },
+      ],
     },
   });
 
