@@ -14,7 +14,6 @@ import assetRental from './routes/assetRental.route'
 import assetLogs from './routes/assetLogs.route'
 // import divisi from './routes/Divisi.route'
 
-
 import { cors } from 'hono/cors';
 const app = new Hono();
 
