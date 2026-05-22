@@ -136,14 +136,23 @@ if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
           const {password} = input;
            const hashed = await bcrypt.hash(password, 10);
 
-          // check username unique validation
+      // check username unique validation
       const usernameCheck = await tx.user.findUnique({
         where:
         {
           username:input.username
         }
       })
-      if(usernameCheck) throw new Error("Username ini sudah ada!: " +input.username);
+
+     if (usernameCheck) {
+  const err: any = new Error("Username ini sudah ada!: " + input.username);
+  err.statusCode = 400;
+  err.errors = {
+    username: ["Username ini sudah ada!: " + input.username],
+  };
+  throw err;
+}
+
       const created = await tx.user.create(
         {data:{...input,password:hashed, role:"KARYAWAN"}}
       )
@@ -154,8 +163,6 @@ if(!makeBy) throw new Error ("User Pembuat Tidak ditemukan")
         }
       })
       if(!makeBy) throw new Error("User Pembuat tidak ditemukan");
-
-        
 
       await createAssetLog(tx,{
         action:"USER(KARYAWAN)_CREATE",

@@ -85,11 +85,12 @@ export class userController {
         data
       }, 201);
 
-    } catch (error) {
-      return c.json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Internal server error'
-      }, 500);
+    } catch (error:any) {
+     return c.json({
+      success: false,
+      message: error?.message || "Internal server error",
+      errors: error?.errors,
+    }, error?.statusCode || 500);
     }
   }
 
