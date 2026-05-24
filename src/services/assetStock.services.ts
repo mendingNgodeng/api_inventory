@@ -66,6 +66,8 @@ static async getAaall() {
   }) {
 
       return prisma.$transaction(async(tx) => {
+
+      if (input.quantity <= 0) throw new Error("Quantity harus lebih dari 0");
      const created = await prisma.assetStock.create({
       data: {...input,status:"TERSEDIA",condition:"BAIK"}, 
       include:{
