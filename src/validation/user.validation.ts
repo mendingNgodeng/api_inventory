@@ -64,5 +64,5 @@ export const UpdateSchema = z.object({
     }),
 
   jabatan: z.string().optional(),
-  no_hp: z.number("Nomor HP harus berupa angka").optional(),
+  no_hp: z.string().optional(),
 });
