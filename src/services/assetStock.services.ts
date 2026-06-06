@@ -254,7 +254,7 @@ static async update(
     });
 
     // NEW: Asset Log untuk update asset/qty/location (kalau ada perubahan)
-    // (kalau tidak ada perubahan sama sekali, skip log)
+    // (kalau tidak ada perubahan sama sekali, skip log) 
     if (Object.keys(changed).length > 0) {
       await createAssetLog(tx, {
         action: "ASSET_STOCK_UPDATE",
