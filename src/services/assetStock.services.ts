@@ -192,28 +192,30 @@ static async update(
     const isChangingQty = input.quantity !== current.quantity;
     const isChangingLoc = input.id_location !== current.id_location;
 
-    // helper: bikin object perubahan untuk meta log
+    // helper: bikin object perubahan untuk meta log buttttttttt
     const changed: Record<string, { from: any; to: any }> = {};
     if (isChangingAsset) changed.id_asset = { from: current.id_asset, to: input.id_asset };
     if (isChangingLoc) changed.id_location = { from: current.id_location, to: input.id_location };
     if (isChangingQty) changed.quantity = { from: current.quantity, to: input.quantity };
 
-    // Kalau tidak boleh edit all, larang ubah asset/qty
+    // Kalau tidak boleh edit all, larang ubah asset/qty 
+    //bruhhhhh 
     if (!canEditAll) {
-      if (isChangingAsset || isChangingQty) {
-        throw new Error("Tidak boleh update asset/quantity untuk status ini!");
+      if (isChangingAsset) {
+        throw new Error("Tidak boleh asset/quantity untuk status ini!");
       }
 
-      // FIX: update pakai tx
+      //update pakai tx, dont forget eh young me
       const updated = await tx.assetStock.update({
         where: { id_asset_stock: id },
-        data: { id_location: input.id_location },
+        data: { id_location: input.id_location,quantity:input.quantity },
         include: { 
           asset: true,
           location: true },
       });
 
       // NEW: Asset Log untuk update lokasi saja (kalau memang ada perubahan lokasi)
+      // yes ada
       if (isChangingLoc) {
         await createAssetLog(tx, {
           action: "ASSET_STOCK_UPDATE",
