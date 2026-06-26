@@ -20,6 +20,12 @@ export class AssetCategoryService {
     description?: string;
   }) {
      return prisma.$transaction(async(tx) => {
+
+  const cekCategories = await tx.assetCategories.findUnique({
+        where:{name: input.name}
+      })
+      if (cekCategories) throw new Error("kategory ini sudah ada");
+
       const created = await tx.assetCategories.create({data:input})
 
       await createAssetLog(tx,{

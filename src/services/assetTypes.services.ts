@@ -25,7 +25,8 @@ export class AssetTypesService {
       const cektypes = await tx.assetTypes.findUnique({
         where:{name: input.name}
       })
-      if (cektypes) throw new Error("Lokasi ini sudah ada");
+      if (cektypes) throw new Error("type ini sudah ada");
+
       const created = await tx.assetTypes.create({data:input})
 
       await createAssetLog(tx,{
