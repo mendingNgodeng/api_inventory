@@ -40,6 +40,7 @@ export type AssetLogAction =
   | "STOCK_UPDATE"
   | "STOCK_MOVE"
   | "DELETE_HISTORY"
+  | "RENTAL_UPDATE_DATE"
   | "OTHER";
 
 type LogMeta = Record<string, any>;

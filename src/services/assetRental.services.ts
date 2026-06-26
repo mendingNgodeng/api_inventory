@@ -138,8 +138,12 @@ export class assetRentalService {
       rentedBucketId = createdBucket.id_asset_stock;
       afterRentedQty = createdBucket.quantity;
     }
+    // cek start rental date
+    const DateStartCek = new Date(input.rental_end).getTime() - new Date(input.rental_start).getTime();
+if (new Date(input.rental_start).getTime() <= Date.now()) { throw new Error("Tanggal Mulai Rental tidak valid"); }
     // total harga sebelum DP
 const ms = new Date(input.rental_end).getTime() - new Date(input.rental_start).getTime();
+
 const days = Math.ceil(ms / (1000 * 60 * 60 * 24)); //rubah ke hari, bulat ke atas
     // const times = Number(input.rental_end) - Number(input.rental_start); //bruh
     const rental_harga = Number(stock.asset.rental_price) * days
@@ -609,4 +613,130 @@ static async cancelRental(id: number) {
 
   return { cleared: true };
 }
+
+static async updateDateEnd(
+  id: number,
+  input: {
+    rental_end: Date;
+  }
+) {
+  return prisma.$transaction(async (tx) => {
+    // Ambil data rental beserta assetnya
+    const rental = await tx.assetRental.findUnique({
+      where: {
+        id_asset_rental: id,
+      },
+      include: {
+        assetStock: {
+          include: {
+            asset: {
+              select: {
+               asset_name: true,
+            asset_code: true,
+            rental_price: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!rental) {
+      throw new Error("Data rental tidak ditemukan");
+    }
+
+    if (new Date(input.rental_end) <= new Date(rental.rental_start)) {
+      throw new Error("Tanggal selesai tidak valid");
+    }
+
+    // Hitung jumlah hari
+    const ms =
+      new Date(input.rental_end).getTime() -
+      new Date(rental.rental_start).getTime();
+
+    const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
+
+    // Hitung total harga baru
+    const total =
+      Number(rental.assetStock.asset.rental_price) *
+      rental.quantity *
+      days;
+
+    // Hitung sisa tagihan
+    const dp = Number(rental.dp_amount ?? 0);
+    const remaining = total - dp;
+
+    // Update payment status
+    let paymentStatus: "BELUM_BAYAR" | "DP" | "LUNAS" = "BELUM_BAYAR";
+
+    if (dp > 0 && dp < total) {
+      paymentStatus = "DP";
+    } else if (dp >= total) {
+      paymentStatus = "LUNAS";
+    }
+
+    // Update rental
+    const updated = await tx.assetRental.update({
+  where: {
+    id_asset_rental: id,
+  },
+  data: {
+    rental_end: input.rental_end,
+    price: total,
+    remaining_amount: remaining,
+    payment_status: paymentStatus,
+  },
+});
+// LOG: RENTAL_UPDATE_DATE
+await createAssetLog(tx, {
+  action: "RENTAL_UPDATE_DATE",
+  description: buildLogDescription({
+    title: "Perpanjang masa rental",
+    detail: `Tanggal selesai rental "${rental.assetStock.asset.asset_name}" berhasil diperbarui`,
+    meta: {
+      id_asset_rental: rental.id_asset_rental,
+      id_asset_stock: rental.id_asset_stock,
+
+      asset_name: rental.assetStock.asset.asset_name,
+      asset_code: rental.assetStock.asset.asset_code,
+
+      rental_period: {
+        from: {
+          start: rental.rental_start,
+          end: rental.rental_end,
+        },
+        to: {
+          start: rental.rental_start,
+          end: input.rental_end,
+        },
+      },
+
+      quantity: rental.quantity,
+
+      price: {
+        from: rental.price,
+        to: total,
+      },
+
+      remaining_amount: {
+        from: rental.remaining_amount,
+        to: remaining,
+      },
+
+      payment_status: {
+        from: rental.payment_status,
+        to: paymentStatus,
+      },
+
+      dp_amount: rental.dp_amount,
+    },
+  }),
+});
+
+return updated;
+
+
+  });
+}
+
 }
