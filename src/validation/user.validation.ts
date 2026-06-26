@@ -3,13 +3,13 @@ export const Schema = z.object({
   name: z
     .string()
     .nonempty("name Wajib Diisi")
-    .min(6, 'minimal 6 karakter')
-    .max(20, 'maksimal 20 karakter'),
+    .min(1, 'minimal 1 karakter')
+    .max(50, 'maksimal 50 karakter'),
   username: z
     .string()
     .nonempty("Username Wajib Diisi")
-    .min(6, 'minimal 6 karakter')
-    .max(20, 'maksimal 20 karakter'),
+    .min(1, 'minimal 1 karakter')
+    .max(50, 'maksimal 50 karakter'),
   password: z
     .string()
     .nonempty("Password Wajib Diisi")
@@ -26,17 +26,17 @@ export const ManySchema = z.array(
     name: z
     .string()
     .nonempty("name Wajib Diisi")
-    .min(6, 'minimal 6 karakter')
-    .max(20, 'maksimal 20 karakter'),
+    .min(1, 'minimal 1 karakter')
+    .max(50, 'maksimal 50 karakter'),
   username: z
     .string()
     .nonempty("Username Wajib Diisi")
-    .min(6, 'minimal 6 karakter')
-    .max(20, 'maksimal 20 karakter'),
+    .min(1, 'minimal 1 karakter')
+    .max(50, 'maksimal 50 karakter'),
   password: z
     .string()
     .nonempty("Password Wajib Diisi")
-    .min(6, 'minimal 6 karakter'),
+    .min(6, 'minimal 1 karakter'),
     // .max(20, 'maksimal 20 karakter'),
   jabatan: z.string().optional(),
   no_hp: z.string().optional(),
@@ -47,19 +47,19 @@ export const UpdateSchema = z.object({
   name: z
     .string()
     .nonempty("name Wajib Diisi")
-    .min(6, "minimal 6 karakter")
-    .max(20, "maksimal 20 karakter"),
+    .min(1, "minimal 1 karakter")
+    .max(50, "maksimal 50 karakter"),
 
   username: z
     .string()
     .nonempty("Username Wajib Diisi")
-    .min(6, "minimal 6 karakter")
-    .max(20, "maksimal 20 karakter"),
+    .min(1, "minimal 1 karakter")
+    .max(50, "maksimal 50 karakter"),
 
   password: z
     .string()
     .optional()
-    .refine((val:any) => !val || val.length >= 6, {
+    .refine((val:any) => !val || val.length >= 1, {
       message: "minimal 6 karakter",
     }),
 
