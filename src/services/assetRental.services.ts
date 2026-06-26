@@ -1,10 +1,40 @@
 import { prisma } from "../utils/prisma";
 import { RentalStatus } from "@prisma/client";
 import {createAssetLog,buildLogDescription} from '../utils/asset-logs'
+import {
+  calculateFineAmount,
+  calculatePaymentStatus,
+  calculateRentalDays,
+} from "../utils/rentalFine";
 
 export class assetRentalService {
   static async getAll() {
-    return prisma.assetRental.findMany({
+    const rentals = await prisma.assetRental.findMany({
+      include: {
+        assetStock: {
+          include: {
+            asset: { select: { asset_code: true, asset_name: true,rental_price:true } },
+            location: { select: { name: true } },
+          },
+        },
+        customer: {
+          select: {
+            id_rental_customer: true,
+            name: true,
+            phone: true,
+            pictureKtp: true,
+          },
+        },
+      },
+      orderBy: { id_asset_rental: "desc" },
+    });
+     const activeRentals = rentals.filter((r) => r.status === "AKTIF");
+
+  for (const rental of activeRentals) {
+    await this.refreshRentalFineById(rental.id_asset_rental);
+  }
+
+  return prisma.assetRental.findMany({
       include: {
         assetStock: {
           include: {
@@ -26,7 +56,36 @@ export class assetRentalService {
   }
 
   static async getById(id: number) {
-    return prisma.assetRental.findUnique({
+    const rental = await prisma.assetRental.findUnique({
+      where: { id_asset_rental: id },
+      include: {
+        assetStock: {
+          include: {
+            asset: { select: { asset_code: true, asset_name: true}, },
+            location: { select: { name: true } },
+          },
+        },
+        customer: {
+          select: {
+            id_rental_customer: true,
+            name: true,
+            phone: true,
+            pictureKtp: true,
+          },
+        },
+      },
+    });
+
+    if (!rental) {
+    throw new Error("Data rental tidak ditemukan");
+  }
+
+  // Kalau masih aktif, refresh denda dulu
+  if (rental.status === "AKTIF") {
+    await this.refreshRentalFineById(id);
+  }
+
+     return prisma.assetRental.findUnique({
       where: { id_asset_rental: id },
       include: {
         assetStock: {
@@ -139,8 +198,14 @@ export class assetRentalService {
       afterRentedQty = createdBucket.quantity;
     }
     // cek start rental date
-    const DateStartCek = new Date(input.rental_end).getTime() - new Date(input.rental_start).getTime();
-if (new Date(input.rental_start).getTime() <= Date.now()) { throw new Error("Tanggal Mulai Rental tidak valid"); }
+const rentalDays = calculateRentalDays(
+  new Date(input.rental_start),
+  new Date(input.rental_end)
+);
+
+if (rentalDays <= 0) {
+  throw new Error("Tanggal selesai harus setelah tanggal mulai");
+}
     // total harga sebelum DP
 const ms = new Date(input.rental_end).getTime() - new Date(input.rental_start).getTime();
 
@@ -153,14 +218,11 @@ const days = Math.ceil(ms / (1000 * 60 * 60 * 24)); //rubah ke hari, bulat ke at
     }
 
     // DP jika ada
-
 const dpAmount = Number(input.dp_amount ?? 0);
 
 if (!Number.isFinite(dpAmount) || dpAmount < 0) {
   throw new Error("DP tidak valid");
 }
-
-
     if ( dpAmount  > Number(total)) {
       throw new Error("Total harga melebihi DP!");
     }
@@ -184,9 +246,11 @@ if (!Number.isFinite(dpAmount) || dpAmount < 0) {
         rental_end: input.rental_end,
         price: total,
         dp_amount:dpAmount,
+        late_days: 0,
+        fine_amount: 0,
         remaining_amount:after_dp,
         payment_status: paymentStatus,
-        status: input.status ?? "AKTIF",
+        status: "AKTIF",
       },
     });
 
@@ -398,19 +462,22 @@ static async payRental(
   }
 ) {
   return prisma.$transaction(async (tx) => {
+      await this.refreshRentalFineById(id, tx);
     const rental = await tx.assetRental.findUnique({
       where: { id_asset_rental: id },
     });
 
     if (!rental) throw new Error("Data rental tidak ditemukan");
 
-    const paymentAmount = Number(input.payment_amount);
 
-    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
-      throw new Error("Nominal pembayaran tidak valid");
+    if (rental.status === "DIBATALKAN") {
+      throw new Error("Rental sudah dibatalkan");
     }
 
+
+   const currentPaidAmount = Number(rental.dp_amount ?? 0);
     const currentRemaining = Number(rental.remaining_amount ?? 0);
+    const paymentAmount = Number(input.payment_amount);
 
     if (currentRemaining <= 0) {
       throw new Error("Rental ini sudah lunas");
@@ -419,20 +486,27 @@ static async payRental(
     if (paymentAmount > currentRemaining) {
       throw new Error("Nominal pembayaran melebihi sisa tagihan");
     }
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+  throw new Error("Nominal pembayaran tidak valid");
+}
 
-    const newRemainingAmount = currentRemaining - paymentAmount;
+    const newPaidAmount = currentPaidAmount + paymentAmount;
 
-    let newPaymentStatus: "BELUM_BAYAR" | "DP" | "LUNAS" = "BELUM_BAYAR";
+    const totalBill =
+      Number(rental.price ?? 0) +
+      Number(rental.fine_amount ?? 0);
 
-    if (newRemainingAmount === 0) {
-      newPaymentStatus = "LUNAS";
-    } else if (Number(rental.dp_amount ?? 0) > 0 || paymentAmount > 0) {
-      newPaymentStatus = "DP";
-    }
+    const newRemainingAmount = Math.max(totalBill - newPaidAmount, 0);
+
+    const newPaymentStatus = calculatePaymentStatus({
+      totalBill,
+      paidAmount: newPaidAmount,
+    });
 
     const updated = await tx.assetRental.update({
       where: { id_asset_rental: id },
       data: {
+        dp_amount: newPaidAmount,
         remaining_amount: newRemainingAmount,
         payment_status: newPaymentStatus,
       },
@@ -447,10 +521,22 @@ static async payRental(
           id_asset_rental: rental.id_asset_rental,
           payment_amount: paymentAmount,
           payment_note: input.payment_note ?? null,
+
+          total_bill: totalBill,
+          price: rental.price,
+          late_days: rental.late_days,
+          fine_amount: Number(rental.fine_amount ?? 0),
+
+          dp_amount: {
+            from: rental.dp_amount,
+            to: newPaidAmount,
+          },
+
           remaining_amount: {
             from: rental.remaining_amount,
             to: newRemainingAmount,
           },
+
           payment_status: {
             from: rental.payment_status,
             to: newPaymentStatus,
@@ -458,6 +544,7 @@ static async payRental(
         },
       }),
     });
+
     await this.clearKtpIfNoActiveRentals(tx, rental.id_rental_customer);
 
     return updated;
@@ -638,6 +725,7 @@ static async updateDateEnd(
             },
           },
         },
+        customer: true,
       },
     });
 
@@ -645,98 +733,171 @@ static async updateDateEnd(
       throw new Error("Data rental tidak ditemukan");
     }
 
-    if (new Date(input.rental_end) <= new Date(rental.rental_start)) {
-      throw new Error("Tanggal selesai tidak valid");
+    if (rental.status === "DIBATALKAN") {
+      throw new Error("Rental sudah dibatalkan");
     }
 
-    // Hitung jumlah hari
-    const ms =
-      new Date(input.rental_end).getTime() -
-      new Date(rental.rental_start).getTime();
-
-    const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
-
-    // Hitung total harga baru
-    const total =
-      Number(rental.assetStock.asset.rental_price) *
-      rental.quantity *
-      days;
-
-    // Hitung sisa tagihan
-    const dp = Number(rental.dp_amount ?? 0);
-    const remaining = total - dp;
-
-    // Update payment status
-    let paymentStatus: "BELUM_BAYAR" | "DP" | "LUNAS" = "BELUM_BAYAR";
-
-    if (dp > 0 && dp < total) {
-      paymentStatus = "DP";
-    } else if (dp >= total) {
-      paymentStatus = "LUNAS";
+    if (rental.status === "SELESAI") {
+      throw new Error("Rental yang sudah selesai tidak bisa diubah tanggalnya");
     }
 
-    // Update rental
+   const newRentalEnd = new Date(input.rental_end);
+    const rentalStart = new Date(rental.rental_start);
+
+    if (newRentalEnd <= rentalStart) {
+      throw new Error("Tanggal selesai harus setelah tanggal mulai");
+    }
+ const rentalDays = calculateRentalDays(rentalStart, newRentalEnd);
+
+    const rentalPrice = Number(rental.assetStock.asset.rental_price ?? 0);
+
+    if (rentalPrice <= 0) {
+      throw new Error("Asset ini belum memiliki harga rental");
+    }
+
+    const price =
+      rentalPrice *
+      Number(rental.quantity) *
+      rentalDays;
+
+const { lateDays, fineAmount } = calculateFineAmount({
+  rentalEnd: newRentalEnd,
+  quantity: Number(rental.quantity),
+  assetRentalPrice: rentalPrice,
+});
+
+    const paidAmount = Number(rental.dp_amount ?? 0);
+    const totalBill = price + fineAmount;
+    const remainingAmount = Math.max(totalBill - paidAmount, 0);
+
+    const paymentStatus = calculatePaymentStatus({
+      totalBill,
+      paidAmount,
+    });
+
     const updated = await tx.assetRental.update({
-  where: {
-    id_asset_rental: id,
-  },
-  data: {
-    rental_end: input.rental_end,
-    price: total,
-    remaining_amount: remaining,
-    payment_status: paymentStatus,
-  },
-});
-// LOG: RENTAL_UPDATE_DATE
-await createAssetLog(tx, {
-  action: "RENTAL_UPDATE_DATE",
-  description: buildLogDescription({
-    title: "Perpanjang masa rental",
-    detail: `Tanggal selesai rental "${rental.assetStock.asset.asset_name}" berhasil diperbarui`,
-    meta: {
-      id_asset_rental: rental.id_asset_rental,
-      id_asset_stock: rental.id_asset_stock,
+      where: {
+        id_asset_rental: id,
+      },
+      data: {
+        rental_end: newRentalEnd,
+        price,
+        late_days: lateDays,
+        fine_amount: fineAmount,
+        remaining_amount: remainingAmount,
+        payment_status: paymentStatus,
+      },
+    });
 
-      asset_name: rental.assetStock.asset.asset_name,
-      asset_code: rental.assetStock.asset.asset_code,
-
-      rental_period: {
-        from: {
-          start: rental.rental_start,
-          end: rental.rental_end,
+    await createAssetLog(tx, {
+      action: "RENTAL_UPDATE_DATE",
+      description: buildLogDescription({
+        title: "Update tanggal selesai rental",
+        detail: `Tanggal selesai rental "${rental.assetStock.asset.asset_name}" berhasil diperbarui`,
+        meta: {
+          id_asset_rental: rental.id_asset_rental,
+          asset_name: rental.assetStock.asset.asset_name,
+          asset_code: rental.assetStock.asset.asset_code,
+          customer_name: rental.customer?.name,
+          rental_period: {
+            from: {
+              start: rental.rental_start,
+              end: rental.rental_end,
+            },
+            to: {
+              start: rental.rental_start,
+              end: newRentalEnd,
+            },
+          },
+          quantity: rental.quantity,
+          rental_days: rentalDays,
+          price: {
+            from: rental.price,
+            to: price,
+          },
+          late_days: {
+            from: rental.late_days,
+            to: lateDays,
+          },
+          fine_amount: {
+            from: Number(rental.fine_amount ?? 0),
+            to: fineAmount,
+          },
+          remaining_amount: {
+            from: rental.remaining_amount,
+            to: remainingAmount,
+          },
+          payment_status: {
+            from: rental.payment_status,
+            to: paymentStatus,
+          },
         },
-        to: {
-          start: rental.rental_start,
-          end: input.rental_end,
-        },
-      },
+      }),
+    });
 
-      quantity: rental.quantity,
-
-      price: {
-        from: rental.price,
-        to: total,
-      },
-
-      remaining_amount: {
-        from: rental.remaining_amount,
-        to: remaining,
-      },
-
-      payment_status: {
-        from: rental.payment_status,
-        to: paymentStatus,
-      },
-
-      dp_amount: rental.dp_amount,
-    },
-  }),
-});
-
-return updated;
-
-
+    return updated;
   });
 }
+
+ static async refreshRentalFineById(id: number, tx: any = prisma) {
+    const rental = await tx.assetRental.findUnique({
+      where: {
+        id_asset_rental: id,
+      },
+        include: {
+    assetStock: {
+      include: {
+        asset: {
+          select: {
+            rental_price: true,
+          },
+        },
+      },
+    },
+  },
+    });
+
+    if (!rental) {
+      throw new Error("Data rental tidak ditemukan");
+    }
+
+    if (rental.status === "DIBATALKAN") {
+      return rental;
+    }
+
+    // Kalau sudah selesai, jangan naikkan denda lagi.
+    // Denda rental selesai harus "dikunci" saat finishRental.
+    if (rental.status === "SELESAI") {
+      return rental;
+    }
+
+const { lateDays, fineAmount } = calculateFineAmount({
+  rentalEnd: new Date(rental.rental_end),
+  quantity: Number(rental.quantity),
+  assetRentalPrice: Number(rental.assetStock.asset.rental_price ?? 0),
+});
+    const basePrice = Number(rental.price ?? 0);
+    const paidAmount = Number(rental.dp_amount ?? 0);
+
+    const totalBill = basePrice + fineAmount;
+    const remainingAmount = Math.max(totalBill - paidAmount, 0);
+
+    const paymentStatus = calculatePaymentStatus({
+      totalBill,
+      paidAmount,
+    });
+
+    return tx.assetRental.update({
+      where: {
+        id_asset_rental: id,
+      },
+      data: {
+        late_days: lateDays,
+        fine_amount: fineAmount,
+        remaining_amount: remainingAmount,
+        payment_status: paymentStatus,
+      },
+    });
+  }
 
 }

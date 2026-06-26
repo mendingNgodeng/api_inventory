@@ -175,6 +175,8 @@ model AssetRental {
   image_after_rental  String?
   dp_amount           Float @default(0)
   remaining_amount    Float @default(0)
+  late_days           Int     @default(0)
+  fine_amount         Float @default(0)
   payment_status      PaymentStatus @default(BELUM_BAYAR)
 
   status              RentalStatus

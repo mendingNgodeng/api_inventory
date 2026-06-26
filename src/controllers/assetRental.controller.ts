@@ -4,6 +4,7 @@ import {
   CreateAssetRentalSchema,
   UpdateAssetRentalSchema,
   FinishRentalSchema,
+  UpdateRentalEndSchema,
   payRental
 } from "../validation/assetRental.validation";
 
@@ -196,6 +197,67 @@ export class assetRentalController {
       return c.json({ success: false, message: "Internal server error" }, 500);
     }
   }
+
+  static async updateDateEnd(c: Context) {
+  try {
+    const { id } = c.req.param();
+    const numericId = Number(id);
+
+    if (isNaN(numericId)) {
+      return c.json(
+        {
+          success: false,
+          message: "ID tidak valid",
+        },
+        400
+      );
+    }
+
+    const body = await c.req.json();
+
+    const result = UpdateRentalEndSchema.safeParse(body);
+
+    if (!result.success) {
+      return c.json(
+        {
+          success: false,
+          message: "Validasi gagal",
+          errors: result.error.flatten().fieldErrors,
+        },
+        400
+      );
+    }
+
+    const data = await assetRentalService.updateDateEnd(
+      numericId,
+      result.data
+    );
+
+    return c.json({
+      success: true,
+      message: "Tanggal selesai rental berhasil diperbarui",
+      data,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      return c.json(
+        {
+          success: false,
+          message: error.message,
+        },
+        400
+      );
+    }
+
+    return c.json(
+      {
+        success: false,
+        message: "Internal server error",
+      },
+      500
+    );
+  }
+}
   //  static async delete(c: Context) {
   //     try {
   //       const { id } = c.req.param();

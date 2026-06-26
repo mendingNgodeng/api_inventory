@@ -70,7 +70,16 @@ assetRental.put(
  }),
   assetRentalController.cancel
 );
-
+assetRental.patch(
+  "/:id/rental-end",
+  authMiddleware,
+    rateLimit({
+  windowSec:Number(process.env.rl_write_windowsSecs),
+   max:Number(process.env.rl_write_max),
+   keyPrefix:String(process.env.asset_rentalCancel_prefix)
+ }),
+  assetRentalController.updateDateEnd
+);
 // // just  the non active
 // assetRental.delete(
 //   '/:id',

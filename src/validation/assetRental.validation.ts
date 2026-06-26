@@ -108,3 +108,23 @@ export const payRental = z.object({
 
 // CANCEL payload (kalau butuh reason nanti bisa ditambah)
 export const CancelRentalSchema = z.object({});
+
+export const UpdateRentalEndSchema = z
+  .object({
+    rental_end: dateField,
+  })
+  .superRefine((val, ctx) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const end = new Date(val.rental_end);
+    end.setHours(0, 0, 0, 0);
+
+    if (end <= today) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rental_end"],
+        message: "Tanggal selesai harus setelah hari ini",
+      });
+    }
+  });
