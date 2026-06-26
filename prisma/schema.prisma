@@ -33,7 +33,7 @@ model User {
 
 model AssetCategories {
   id_asset_categories Int @id @default(autoincrement())
-  name        String
+  name        String  @unique
   description String?
 
   assets Asset[]
@@ -41,7 +41,7 @@ model AssetCategories {
 
 model AssetTypes {
   id_asset_types Int @id @default(autoincrement())
-  name        String
+  name        String @unique
   description String?
 
   assets Asset[]
@@ -108,7 +108,7 @@ model AssetStock {
 
 model Location {
   id_location Int @id @default(autoincrement())
-  name        String
+  name        String  @unique
   description String?
 
   stocks       AssetStock[]

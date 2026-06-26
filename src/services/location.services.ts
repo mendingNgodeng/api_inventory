@@ -28,6 +28,12 @@ export class locationService {
     description?:string;
   }){ 
     return prisma.$transaction(async(tx) => {
+
+      const cekLocation = await tx.location.findUnique({
+        where:{name: input.name}
+      })
+      if (cekLocation) throw new Error("Lokasi ini sudah ada");
+      
       const created = await tx.location.create({data:input})
 
       await createAssetLog(tx,{

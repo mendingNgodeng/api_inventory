@@ -21,7 +21,11 @@ export class AssetTypesService {
     name: string;
     description?: string;
   }) {
-    return prisma.$transaction(async(tx) =>{
+    return prisma.$transaction(async(tx) =>{      
+      const cektypes = await tx.assetTypes.findUnique({
+        where:{name: input.name}
+      })
+      if (cektypes) throw new Error("Lokasi ini sudah ada");
       const created = await tx.assetTypes.create({data:input})
 
       await createAssetLog(tx,{
