@@ -24,8 +24,12 @@ export const rateLimit = (opts: RateLimitOptions) => {
 
     const current = await redis.incr(key);
 
-    if (current === 1) {
+    let ttl = await redis.ttl(key);
+   // Kalau key baru, tidak punya TTL, atau TTL lama lebih panjang dari config sekarang,
+    // paksa TTL mengikuti windowSec terbaru.
+    if (current === 1 || ttl === -1 || ttl > windowSec) {
       await redis.expire(key, windowSec);
+      ttl = windowSec;
     }
 
     if (current > max) {
