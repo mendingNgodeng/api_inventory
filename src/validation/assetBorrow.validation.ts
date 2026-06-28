@@ -32,3 +32,13 @@ export const UsedSchema = z.object({
     .int("harus bilangan bulat")
     .nonnegative("tidak boleh negatif"),
 });
+
+export const borrowRequestSchema = z.object({
+  borrower_id: z.number().int().positive().optional(),
+  id_asset_stock: z.number().int().positive(),
+  quantity: z.number().int().positive(),
+});
+
+export const rejectBorrowSchema = z.object({
+  approval_note: z.string().trim().max(255).optional(),
+});

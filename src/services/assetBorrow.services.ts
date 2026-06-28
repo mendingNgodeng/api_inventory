@@ -1,5 +1,5 @@
 import { prisma } from '../utils/prisma';
-import { BorrowStatus,AssetStockStatus } from '@prisma/client';
+import { BorrowStatus,AssetStockStatus,userRole } from '@prisma/client';
 import {createAssetLog,buildLogDescription} from '../utils/asset-logs'
 
 export class AssetBorrowService {
@@ -409,6 +409,517 @@ static async returnAsset(id: number) {
   return prisma.assetBorrowed.delete({
     where: { id_asset_borrowed: id }
   });
+
+  
 }
 
+private static async getActor(tx: any, actor_id: number) {
+  const actor = await tx.user.findUnique({
+    where: { id_user: actor_id },
+  });
+
+  if (!actor) {
+    throw new Error("User login tidak ditemukan");
+  }
+
+  return actor;
+}
+
+private static async moveStockToBorrowBucket(
+  tx: any,
+  input: {
+    id_asset_stock: number;
+    quantity: number;
+    status_stock: AssetStockStatus;
+  }
+) {
+  const stock = await tx.assetStock.findUnique({
+    where: { id_asset_stock: input.id_asset_stock },
+    include: { asset: true, location: true },
+  });
+
+  if (!stock) throw new Error("Stock tidak ditemukan");
+
+  if (stock.condition !== "BAIK" || stock.status !== "TERSEDIA") {
+    throw new Error("Stock tidak valid untuk dipinjam");
+  }
+
+  if (stock.quantity < input.quantity) {
+    throw new Error("Stock tidak mencukupi");
+  }
+
+  const beforeOriginQty = stock.quantity;
+  const remainingQty = stock.quantity - input.quantity;
+
+  const updatedOrigin = await tx.assetStock.update({
+    where: { id_asset_stock: stock.id_asset_stock },
+    data: { quantity: remainingQty },
+    include: { asset: true, location: true },
+  });
+
+  const bucketStock = await tx.assetStock.findFirst({
+    where: {
+      id_asset: stock.id_asset,
+      id_location: stock.id_location,
+      condition: "BAIK",
+      status: input.status_stock,
+    },
+  });
+
+  const beforeBucketQty = bucketStock?.quantity ?? 0;
+  let afterBucketQty = beforeBucketQty;
+  let bucketId: number | null = null;
+
+  if (bucketStock) {
+    const updatedBucket = await tx.assetStock.update({
+      where: { id_asset_stock: bucketStock.id_asset_stock },
+      data: {
+        quantity: bucketStock.quantity + input.quantity,
+      },
+    });
+
+    bucketId = updatedBucket.id_asset_stock;
+    afterBucketQty = updatedBucket.quantity;
+  } else {
+    const createdBucket = await tx.assetStock.create({
+      data: {
+        id_asset: stock.id_asset,
+        id_location: stock.id_location,
+        condition: "BAIK",
+        status: input.status_stock,
+        quantity: input.quantity,
+      },
+    });
+
+    bucketId = createdBucket.id_asset_stock;
+    afterBucketQty = createdBucket.quantity;
+  }
+
+  return {
+    stock,
+    updatedOrigin,
+    bucketId,
+    beforeOriginQty,
+    afterOriginQty: updatedOrigin.quantity,
+    beforeBucketQty,
+    afterBucketQty,
+  };
+}
+
+private static getInitialBorrowStatus(actorRole: userRole): BorrowStatus {
+  if (actorRole === "BOS") {
+    return "DIPINJAM";
+  }
+
+  if (actorRole === "ADMIN") {
+    return "MENUNGGU_BOS";
+  }
+
+  return "MENUNGGU_ADMIN";
+}
+// new borrow request
+static async requestBorrow(
+  actor_id: number,
+  input: {
+    borrower_id?: number;
+    id_asset_stock: number;
+    quantity: number;
+  }
+) {
+  if (input.quantity <= 0) {
+    throw new Error("Quantity harus lebih dari 0");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const actor = await this.getActor(tx, actor_id);
+
+    const borrowerId = input.borrower_id ?? actor_id;
+
+    if (actor.role === "KARYAWAN" && borrowerId !== actor_id) {
+      throw new Error("Karyawan hanya boleh mengajukan peminjaman untuk dirinya sendiri");
+    }
+    
+    const borrower = await tx.user.findUnique({
+      where: { id_user: borrowerId },
+    });
+
+    if (!borrower) {
+      throw new Error("Peminjam tidak ditemukan");
+    }
+
+    const stock = await tx.assetStock.findUnique({
+      where: { id_asset_stock: input.id_asset_stock },
+      include: { asset: true, location: true },
+    });
+
+    if (!stock) throw new Error("Stock tidak ditemukan");
+
+    if (stock.condition !== "BAIK" || stock.status !== "TERSEDIA") {
+      throw new Error("Stock tidak valid untuk dipinjam");
+    }
+
+    if (stock.quantity < input.quantity) {
+      throw new Error("Stock tidak mencukupi");
+    }
+
+    const initialStatus = this.getInitialBorrowStatus(actor.role);
+
+    // BOS pinjam langsung: langsung mutasi stok dan status DIPINJAM
+    if (initialStatus === "DIPINJAM") {
+      const moved = await this.moveStockToBorrowBucket(tx, {
+        id_asset_stock: input.id_asset_stock,
+        quantity: input.quantity,
+        status_stock: "DIPINJAM",
+      });
+
+      const borrow = await tx.assetBorrowed.create({
+        data: {
+          id_user: borrowerId,
+          id_asset_stock: input.id_asset_stock,
+          quantity: input.quantity,
+          status: "DIPINJAM",
+          requested_by_id: actor_id,
+          boss_approved_by_id: actor_id,
+          boss_approved_at: new Date(),
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      await createAssetLog(tx, {
+        action: "BORROW_CREATE_DIRECT_BOSS",
+        description: buildLogDescription({
+          title: "Peminjaman langsung oleh bos",
+          detail: `Asset "${moved.stock.asset.asset_name} (${moved.stock.asset.asset_code})" dipinjam langsung oleh "${borrower.name}" qty ${input.quantity}`,
+          meta: {
+            id_asset_borrowed: borrow.id_asset_borrowed,
+            borrower: {
+              id_user: borrower.id_user,
+              name: borrower.name,
+              role: borrower.role,
+            },
+            actor: {
+              id_user: actor.id_user,
+              name: actor.name,
+              role: actor.role,
+            },
+            asset_name: moved.stock.asset.asset_name,
+            asset_code: moved.stock.asset.asset_code,
+            location_name: moved.stock.location.name,
+            moved_qty: input.quantity,
+            origin_qty: {
+              from: moved.beforeOriginQty,
+              to: moved.afterOriginQty,
+            },
+            bucket_qty: {
+              from: moved.beforeBucketQty,
+              to: moved.afterBucketQty,
+            },
+          },
+        }),
+      });
+
+      return borrow;
+    }
+
+    // KARYAWAN / ADMIN: hanya create request, stok belum berubah
+    const borrow = await tx.assetBorrowed.create({
+      data: {
+        id_user: borrowerId,
+        id_asset_stock: input.id_asset_stock,
+        quantity: input.quantity,
+        status: initialStatus,
+        requested_by_id: actor_id,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    await createAssetLog(tx, {
+      action: "BORROW_REQUEST",
+      description: buildLogDescription({
+        title: "Request peminjaman dibuat",
+        detail:
+          initialStatus === "MENUNGGU_ADMIN"
+            ? `Request peminjaman "${stock.asset.asset_name} (${stock.asset.asset_code})" untuk "${borrower.name}" menunggu approval admin`
+            : `Request peminjaman "${stock.asset.asset_name} (${stock.asset.asset_code})" untuk "${borrower.name}" menunggu approval bos`,
+        meta: {
+          id_asset_borrowed: borrow.id_asset_borrowed,
+          status: initialStatus,
+          borrower: {
+            id_user: borrower.id_user,
+            name: borrower.name,
+            role: borrower.role,
+          },
+          actor: {
+            id_user: actor.id_user,
+            name: actor.name,
+            role: actor.role,
+          },
+          asset_name: stock.asset.asset_name,
+          asset_code: stock.asset.asset_code,
+          location_name: stock.location.name,
+          requested_qty: input.quantity,
+        },
+      }),
+    });
+
+    return borrow;
+  });
+}
+
+static async approveByAdmin(actor_id: number, id: number) {
+  return prisma.$transaction(async (tx) => {
+    const actor = await this.getActor(tx, actor_id);
+
+    if (actor.role !== "ADMIN") {
+      throw new Error("Hanya admin yang bisa melakukan approval tahap admin");
+    }
+
+    const borrow = await tx.assetBorrowed.findUnique({
+      where: { id_asset_borrowed: id },
+      include: {
+        user: true,
+        assetStock: {
+          include: {
+            asset: true,
+            location: true,
+          },
+        },
+      },
+    });
+
+    if (!borrow) {
+      throw new Error("Data peminjaman tidak ditemukan");
+    }
+
+    if (borrow.status !== "MENUNGGU_ADMIN") {
+      throw new Error("Peminjaman ini tidak sedang menunggu approval admin");
+    }
+
+    const updated = await tx.assetBorrowed.update({
+      where: { id_asset_borrowed: id },
+      data: {
+        status: "MENUNGGU_BOS",
+        admin_approved_by_id: actor_id,
+        admin_approved_at: new Date(),
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    await createAssetLog(tx, {
+      action: "BORROW_APPROVE_ADMIN",
+      description: buildLogDescription({
+        title: "Peminjaman disetujui admin",
+        detail: `Request peminjaman "${borrow.assetStock.asset.asset_name} (${borrow.assetStock.asset.asset_code})" disetujui admin dan menunggu approval bos`,
+        meta: {
+          id_asset_borrowed: borrow.id_asset_borrowed,
+          status: {
+            from: borrow.status,
+            to: updated.status,
+          },
+          admin: {
+            id_user: actor.id_user,
+            name: actor.name,
+            role: actor.role,
+          },
+          borrower: borrow.user
+            ? {
+                id_user: borrow.user.id_user,
+                name: borrow.user.name,
+              }
+            : null,
+          asset_name: borrow.assetStock.asset.asset_name,
+          asset_code: borrow.assetStock.asset.asset_code,
+          quantity: borrow.quantity,
+        },
+      }),
+    });
+
+    return updated;
+  });
+}
+
+static async approveByBoss(actor_id: number, id: number) {
+  return prisma.$transaction(async (tx) => {
+    const actor = await this.getActor(tx, actor_id);
+
+    if (actor.role !== "BOS") {
+      throw new Error("Hanya bos yang bisa melakukan approval akhir");
+    }
+
+    const borrow = await tx.assetBorrowed.findUnique({
+      where: { id_asset_borrowed: id },
+      include: {
+        user: true,
+        assetStock: {
+          include: {
+            asset: true,
+            location: true,
+          },
+        },
+      },
+    });
+
+    if (!borrow) {
+      throw new Error("Data peminjaman tidak ditemukan");
+    }
+
+    if (borrow.status !== "MENUNGGU_BOS") {
+      throw new Error("Peminjaman ini tidak sedang menunggu approval bos");
+    }
+
+    const moved = await this.moveStockToBorrowBucket(tx, {
+      id_asset_stock: borrow.id_asset_stock,
+      quantity: borrow.quantity,
+      status_stock: "DIPINJAM",
+    });
+
+    const updated = await tx.assetBorrowed.update({
+      where: { id_asset_borrowed: id },
+      data: {
+        status: "DIPINJAM",
+        boss_approved_by_id: actor_id,
+        boss_approved_at: new Date(),
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    await createAssetLog(tx, {
+      action: "BORROW_APPROVE_BOSS",
+      description: buildLogDescription({
+        title: "Peminjaman disetujui bos",
+        detail: `Request peminjaman "${moved.stock.asset.asset_name} (${moved.stock.asset.asset_code})" disetujui bos dan menjadi DIPINJAM`,
+        meta: {
+          id_asset_borrowed: borrow.id_asset_borrowed,
+          status: {
+            from: borrow.status,
+            to: updated.status,
+          },
+          boss: {
+            id_user: actor.id_user,
+            name: actor.name,
+            role: actor.role,
+          },
+          borrower: borrow.user
+            ? {
+                id_user: borrow.user.id_user,
+                name: borrow.user.name,
+              }
+            : null,
+          asset_name: moved.stock.asset.asset_name,
+          asset_code: moved.stock.asset.asset_code,
+          location_name: moved.stock.location.name,
+          moved_qty: borrow.quantity,
+          origin_qty: {
+            from: moved.beforeOriginQty,
+            to: moved.afterOriginQty,
+          },
+          bucket_qty: {
+            from: moved.beforeBucketQty,
+            to: moved.afterBucketQty,
+          },
+        },
+      }),
+    });
+
+    return updated;
+  });
+}
+
+
+static async rejectBorrow(
+  actor_id: number,
+  id: number,
+  input?: {
+    approval_note?: string;
+  }
+) {
+  return prisma.$transaction(async (tx) => {
+    const actor = await this.getActor(tx, actor_id);
+
+    if (actor.role !== "ADMIN" && actor.role !== "BOS") {
+      throw new Error("Hanya admin atau bos yang bisa menolak peminjaman");
+    }
+
+    const borrow = await tx.assetBorrowed.findUnique({
+      where: { id_asset_borrowed: id },
+      include: {
+        user: true,
+        assetStock: {
+          include: {
+            asset: true,
+            location: true,
+          },
+        },
+      },
+    });
+
+    if (!borrow) {
+      throw new Error("Data peminjaman tidak ditemukan");
+    }
+
+    if (
+      borrow.status !== "MENUNGGU_ADMIN" &&
+      borrow.status !== "MENUNGGU_BOS"
+    ) {
+      throw new Error("Peminjaman ini tidak bisa ditolak");
+    }
+
+    if (actor.role === "ADMIN" && borrow.status !== "MENUNGGU_ADMIN") {
+      throw new Error("Admin hanya bisa menolak request yang menunggu approval admin");
+    }
+
+    const updated = await tx.assetBorrowed.update({
+      where: { id_asset_borrowed: id },
+      data: {
+        status: "DITOLAK",
+        rejected_by_id: actor_id,
+        rejected_at: new Date(),
+        approval_note: input?.approval_note ?? null,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    await createAssetLog(tx, {
+      action: "BORROW_REJECT",
+      description: buildLogDescription({
+        title: "Peminjaman ditolak",
+        detail: `Request peminjaman "${borrow.assetStock.asset.asset_name} (${borrow.assetStock.asset.asset_code})" ditolak oleh "${actor.name}"`,
+        meta: {
+          id_asset_borrowed: borrow.id_asset_borrowed,
+          status: {
+            from: borrow.status,
+            to: updated.status,
+          },
+          rejected_by: {
+            id_user: actor.id_user,
+            name: actor.name,
+            role: actor.role,
+          },
+          borrower: borrow.user
+            ? {
+                id_user: borrow.user.id_user,
+                name: borrow.user.name,
+              }
+            : null,
+          approval_note: input?.approval_note ?? null,
+          asset_name: borrow.assetStock.asset.asset_name,
+          asset_code: borrow.assetStock.asset.asset_code,
+          quantity: borrow.quantity,
+        },
+      }),
+    });
+
+    return updated;
+  });
+}
 }

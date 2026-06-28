@@ -41,6 +41,11 @@ export type AssetLogAction =
   | "STOCK_MOVE"
   | "DELETE_HISTORY"
   | "RENTAL_UPDATE_DATE"
+  | "BORROW_CREATE_DIRECT_BOSS"
+  | "BORROW_REQUEST"
+  | "BORROW_APPROVE_ADMIN"
+  | "BORROW_APPROVE_BOSS"
+  | "BORROW_REJECT"
   | "OTHER";
 
 type LogMeta = Record<string, any>;

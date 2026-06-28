@@ -14,6 +14,7 @@ datasource db {
 enum userRole {
   ADMIN
   KARYAWAN
+  BOS
 }
 // master
 model User {
@@ -122,6 +123,9 @@ model Divisi {
 }
 
 enum BorrowStatus {
+  MENUNGGU_ADMIN
+  MENUNGGU_BOS
+  DITOLAK
   DIPAKAI
   DIPINJAM
   DIKEMBALIKAN
@@ -136,6 +140,15 @@ model AssetBorrowed {
   borrowed_date     DateTime  @default(now())
   returned_date     DateTime  @updatedAt
   status            BorrowStatus
+
+  requested_by_id       Int?
+  admin_approved_by_id  Int?
+  admin_approved_at     DateTime?
+  boss_approved_by_id   Int?
+  boss_approved_at      DateTime?
+  rejected_by_id        Int?
+  rejected_at           DateTime?
+  approval_note         String?
 
   assetStock AssetStock @relation(fields: [id_asset_stock], references: [id_asset_stock])
   user  User?  @relation(fields: [id_user], references: [id_user])
