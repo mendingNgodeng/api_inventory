@@ -37,6 +37,9 @@ export const borrowRequestSchema = z.object({
   borrower_id: z.number().int().positive().optional(),
   id_asset_stock: z.number().int().positive(),
   quantity: z.number().int().positive(),
+  due_date: z.coerce.date().refine((date) => date > new Date(), {
+    message: "Batas pengembalian harus setelah waktu sekarang",
+  }),
 });
 
 export const rejectBorrowSchema = z.object({

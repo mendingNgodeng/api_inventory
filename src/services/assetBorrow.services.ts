@@ -2,16 +2,90 @@ import { prisma } from '../utils/prisma';
 import { BorrowStatus,AssetStockStatus,userRole } from '@prisma/client';
 import {createAssetLog,buildLogDescription} from '../utils/asset-logs'
 
+
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function calculateBorrowLateDays(dueDate: Date, comparedDate = new Date()) {
+  const due = startOfDay(dueDate);
+  const current = startOfDay(comparedDate);
+
+  if (current <= due) return 0;
+
+  const diffMs = current.getTime() - due.getTime();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+}
+
 export class AssetBorrowService {
+private static async attachApprovalUsers(rows: any[]) {
+  const userIds = Array.from(
+    new Set(
+      rows
+        .flatMap((r) => [
+          r.requested_by_id,
+          r.admin_approved_by_id,
+          r.boss_approved_by_id,
+          r.rejected_by_id,
+        ])
+        .filter(Boolean)
+    )
+  );
+
+  if (!userIds.length) {
+    return rows.map((r) => ({
+      ...r,
+      requestedBy: null,
+      adminApprovedBy: null,
+      bossApprovedBy: null,
+      rejectedBy: null,
+    }));
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      id_user: {
+        in: userIds,
+      },
+    },
+    select: {
+      id_user: true,
+      name: true,
+      username: true,
+      role: true,
+      jabatan: true,
+      no_hp: true,
+    },
+  });
+
+  const userMap = new Map(users.map((u) => [u.id_user, u]));
+
+  return rows.map((r) => ({
+    ...r,
+    requestedBy: r.requested_by_id ? userMap.get(r.requested_by_id) ?? null : null,
+    adminApprovedBy: r.admin_approved_by_id
+      ? userMap.get(r.admin_approved_by_id) ?? null
+      : null,
+    bossApprovedBy: r.boss_approved_by_id
+      ? userMap.get(r.boss_approved_by_id) ?? null
+      : null,
+    rejectedBy: r.rejected_by_id ? userMap.get(r.rejected_by_id) ?? null : null,
+  }));
+}
+
   static async getAll() {
-  return prisma.assetBorrowed.findMany({
+  const rows = await prisma.assetBorrowed.findMany({
     orderBy:{borrowed_date:'desc'},
     include: {
         user:{
             select:{
-              name:true,
-              jabatan:true,
-              no_hp:true
+        id_user: true,
+        name: true,
+        jabatan: true,
+        no_hp: true,
+        role: true,
             }
           },
       assetStock: {
@@ -32,6 +106,43 @@ export class AssetBorrowService {
       }
     }
   });
+  const activeRows = rows.filter((r) =>
+  ["DIPINJAM", "TERLAMBAT"].includes(r.status)
+);
+
+for (const row of activeRows) {
+  await this.refreshBorrowLateStatusById(row.id_asset_borrowed);
+}
+
+  return prisma.assetBorrowed.findMany({
+  orderBy: { borrowed_date: "desc" },
+  include: {
+    user: {
+      select: {
+        id_user: true,
+        name: true,
+        jabatan: true,
+        no_hp: true,
+        role: true,
+      },
+    },
+    assetStock: {
+      include: {
+        asset: {
+          select: {
+            asset_code: true,
+            asset_name: true,
+          },
+        },
+        location: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    },
+  },
+});
 }
 
 static async getAllById(id:number) {
@@ -320,10 +431,14 @@ static async returnAsset(id: number) {
       include: { asset: true, location: true },
     });
 
+    const lateDays = borrow.due_date
+  ? calculateBorrowLateDays(new Date(borrow.due_date), new Date())
+  : 0;
+
     // 3) Update borrow record
     const updatedBorrow = await tx.assetBorrowed.update({
       where: { id_asset_borrowed: id },
-      data: { status: "DIKEMBALIKAN", returned_date: new Date() },
+      data: { status: "DIKEMBALIKAN", returned_date: new Date(),late_days:lateDays },
       include: { user: true },
     });
 
@@ -524,6 +639,7 @@ static async requestBorrow(
     borrower_id?: number;
     id_asset_stock: number;
     quantity: number;
+    due_date: Date;
   }
 ) {
   if (input.quantity <= 0) {
@@ -538,7 +654,7 @@ static async requestBorrow(
     if (actor.role === "KARYAWAN" && borrowerId !== actor_id) {
       throw new Error("Karyawan hanya boleh mengajukan peminjaman untuk dirinya sendiri");
     }
-    
+
     const borrower = await tx.user.findUnique({
       where: { id_user: borrowerId },
     });
@@ -562,6 +678,17 @@ static async requestBorrow(
       throw new Error("Stock tidak mencukupi");
     }
 
+    const dueDate = new Date(input.due_date);
+    const now = new Date();
+
+if (Number.isNaN(dueDate.getTime())) {
+  throw new Error("Tanggal batas pengembalian tidak valid");
+}
+
+if (dueDate <= now) {
+  throw new Error("Tanggal batas pengembalian harus setelah waktu sekarang");
+}
+
     const initialStatus = this.getInitialBorrowStatus(actor.role);
 
     // BOS pinjam langsung: langsung mutasi stok dan status DIPINJAM
@@ -577,6 +704,8 @@ static async requestBorrow(
           id_user: borrowerId,
           id_asset_stock: input.id_asset_stock,
           quantity: input.quantity,
+          returned_date: "-",
+          due_date: dueDate,
           status: "DIPINJAM",
           requested_by_id: actor_id,
           boss_approved_by_id: actor_id,
@@ -629,6 +758,7 @@ static async requestBorrow(
         id_user: borrowerId,
         id_asset_stock: input.id_asset_stock,
         quantity: input.quantity,
+        due_date: dueDate,
         status: initialStatus,
         requested_by_id: actor_id,
       },
@@ -922,4 +1052,31 @@ static async rejectBorrow(
     return updated;
   });
 }
+
+static async refreshBorrowLateStatusById(id: number, tx: any = prisma) {
+  const borrow = await tx.assetBorrowed.findUnique({
+    where: { id_asset_borrowed: id },
+  });
+
+  if (!borrow) throw new Error("Data peminjaman tidak ditemukan");
+
+  if (!borrow.due_date) return borrow;
+
+  if (borrow.status !== "DIPINJAM" && borrow.status !== "TERLAMBAT") {
+    return borrow;
+  }
+
+  const lateDays = calculateBorrowLateDays(new Date(borrow.due_date));
+
+  const newStatus = lateDays > 0 ? "TERLAMBAT" : "DIPINJAM";
+
+  return tx.assetBorrowed.update({
+    where: { id_asset_borrowed: id },
+    data: {
+      late_days: lateDays,
+      status: newStatus,
+    },
+  });
+}
+
 }

@@ -138,8 +138,11 @@ model AssetBorrowed {
   id_user           Int?
   quantity          Int
   borrowed_date     DateTime  @default(now())
-  returned_date     DateTime  @updatedAt
+  returned_date     DateTime?  
   status            BorrowStatus
+  
+  due_date          DateTime?
+  late_days         Int @default(0)
 
   requested_by_id       Int?
   admin_approved_by_id  Int?
@@ -150,6 +153,7 @@ model AssetBorrowed {
   rejected_at           DateTime?
   approval_note         String?
 
+  updated_at            DateTime @updatedAt @default(now())
   assetStock AssetStock @relation(fields: [id_asset_stock], references: [id_asset_stock])
   user  User?  @relation(fields: [id_user], references: [id_user])
 
