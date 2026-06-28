@@ -352,7 +352,10 @@ const actor = await tx.user.findUnique({
 }
 
 // Pengembalian
-static async returnAsset(id: number) {
+static async returnAsset(id: number, 
+  input: {
+    image_after_return: string;
+  }) {
   return prisma.$transaction(async (tx) => {
     const borrow = await tx.assetBorrowed.findUnique({
       where: { id_asset_borrowed: id },
@@ -438,7 +441,7 @@ static async returnAsset(id: number) {
     // 3) Update borrow record
     const updatedBorrow = await tx.assetBorrowed.update({
       where: { id_asset_borrowed: id },
-      data: { status: "DIKEMBALIKAN", returned_date: new Date(),late_days:lateDays },
+      data: { status: "DIKEMBALIKAN", returned_date: new Date(),late_days:lateDays,  image_after_return: input.image_after_return, },
       include: { user: true },
     });
 

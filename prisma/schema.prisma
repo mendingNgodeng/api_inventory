@@ -143,6 +143,7 @@ model AssetBorrowed {
   
   due_date          DateTime?
   late_days         Int @default(0)
+  image_after_return String? @db.Text
 
   requested_by_id       Int?
   admin_approved_by_id  Int?

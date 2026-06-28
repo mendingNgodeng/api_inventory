@@ -2,7 +2,7 @@
 
 import { Context } from 'hono';
 import { AssetBorrowService } from '../services/assetBorrow.services';
-import { borrowSchema,UsedSchema,rejectBorrowSchema,borrowRequestSchema} from '../validation/assetBorrow.validation';
+import { borrowSchema,UsedSchema,rejectBorrowSchema,borrowRequestSchema,returnBorrowSchema} from '../validation/assetBorrow.validation';
 
 export class assetBorrowController {
 
@@ -140,7 +140,30 @@ static async returnAsset(c: Context) {
       }, 400);
     }
 
-    const data = await AssetBorrowService.returnAsset(numericId);
+     let body = {};
+
+    try {
+      body = await c.req.json();
+    } catch {
+      body = {};
+    }
+
+    
+
+    const result = returnBorrowSchema.safeParse(body);
+
+     if (!result.success) {
+      return c.json(
+        {
+          success: false,
+          message: "Validasi gagal",
+          errors: result.error.flatten().fieldErrors,
+        },
+        400
+      );
+    }
+
+    const data = await AssetBorrowService.returnAsset(numericId,result.data);
 
     return c.json({
       success: true,
