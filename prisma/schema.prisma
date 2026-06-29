@@ -125,6 +125,7 @@ model Divisi {
 enum BorrowStatus {
   MENUNGGU_ADMIN
   MENUNGGU_BOS
+  DIBATALKAN
   DITOLAK
   DIPAKAI
   DIPINJAM
@@ -140,7 +141,10 @@ model AssetBorrowed {
   borrowed_date     DateTime  @default(now())
   returned_date     DateTime?  
   status            BorrowStatus
-  
+
+  canceled_by_id    Int?
+  canceled_at       DateTime?
+  cancel_note       String?
   due_date          DateTime?
   late_days         Int @default(0)
   image_after_return String? @db.Text

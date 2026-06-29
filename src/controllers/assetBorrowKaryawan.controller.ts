@@ -93,42 +93,42 @@ static async createBorrow(c: Context) {
     }
   }
 
-static async returnAsset(c: Context) {
-  try {
-    const { id } = c.req.param();
-    const numericId = Number(id);
+// static async returnAsset(c: Context) {
+//   try {
+//     const { id } = c.req.param();
+//     const numericId = Number(id);
 
-    if (isNaN(numericId)) {
-      return c.json({
-        success: false,
-        message: "ID tidak valid"
-      }, 400);
-    }
+//     if (isNaN(numericId)) {
+//       return c.json({
+//         success: false,
+//         message: "ID tidak valid"
+//       }, 400);
+//     }
 
-    const data = await AssetBorrowService.returnAsset(numericId);
+//     const data = await AssetBorrowService.returnAsset(numericId);
 
-    return c.json({
-      success: true,
-      message: "Asset berhasil dikembalikan",
-      data
-    });
+//     return c.json({
+//       success: true,
+//       message: "Asset berhasil dikembalikan",
+//       data
+//     });
 
-  } catch (error) {
+//   } catch (error) {
 
-    // Error dari business logic (misalnya sudah dikembalikan)
-    if (error instanceof Error) {
-      return c.json({
-        success: false,
-        message: error.message
-      }, 400);
-    }
+//     // Error dari business logic (misalnya sudah dikembalikan)
+//     if (error instanceof Error) {
+//       return c.json({
+//         success: false,
+//         message: error.message
+//       }, 400);
+//     }
 
-    return c.json({
-      success: false,
-      message: "Internal server error"
-    }, 500);
-  }
-}
+//     return c.json({
+//       success: false,
+//       message: "Internal server error"
+//     }, 500);
+//   }
+// }
 
 
   static async delete(c: Context) {

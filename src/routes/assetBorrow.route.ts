@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import {  assetBorrowController } from '../controllers/assetBorrow.controller';
-import {  assetBorrowKaryawanController } from '../controllers/assetBorrowKaryawan.controller';
+// import {  assetBorrowKaryawanController } from '../controllers/assetBorrowKaryawan.controller';
 import { authMiddleware, requireRole,requireSelfOrAdmin } from '../middleware/auth.middleware';
 import { rateLimit } from '../middleware/rateLimit';
 
@@ -129,6 +129,17 @@ assetBorrow.put(
   assetBorrowController.returnAsset
 );
 
+assetBorrow.put(
+  "/:id/cancel",
+  authMiddleware,
+  requireRole("KARYAWAN", "ADMIN", "BOS"),
+  rateLimit({
+    windowSec: Number(process.env.rl_write_windowsSecs),
+    max: Number(process.env.rl_write_max),
+    keyPrefix: String(process.env.borrow_cancel_keyPrefix),
+  }),
+  assetBorrowController.cancelBorrow
+);
 
 // assetBorrow.delete(
 //   '/:id', authMiddleware,

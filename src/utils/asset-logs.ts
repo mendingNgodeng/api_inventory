@@ -46,6 +46,7 @@ export type AssetLogAction =
   | "BORROW_APPROVE_ADMIN"
   | "BORROW_APPROVE_BOSS"
   | "BORROW_REJECT"
+  | "BORROW_CANCEL"
   | "OTHER";
 
 type LogMeta = Record<string, any>;

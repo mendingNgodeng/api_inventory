@@ -46,11 +46,12 @@ export const rejectBorrowSchema = z.object({
   approval_note: z.string().trim().max(255).optional(),
 });
 
+export const cancelBorrowSchema = z.object({
+  cancel_note: z.string().trim().max(255).optional(),
+});
+
 export const returnBorrowSchema = z.object({
   image_after_return: z
     .string()
     .min(1, "Foto pengembalian wajib diisi")
-    .refine((value) => value.startsWith("data:image/"), {
-      message: "File harus berupa gambar base64",
-    }),
 });

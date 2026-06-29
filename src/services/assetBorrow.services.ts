@@ -1,7 +1,7 @@
 import { prisma } from '../utils/prisma';
 import { BorrowStatus,AssetStockStatus,userRole } from '@prisma/client';
 import {createAssetLog,buildLogDescription} from '../utils/asset-logs'
-
+import { validateBase64Image } from "../utils/imageValidator";
 
 function startOfDay(date: Date) {
   const d = new Date(date);
@@ -356,6 +356,10 @@ static async returnAsset(id: number,
   input: {
     image_after_return: string;
   }) {
+      const validatedImage = validateBase64Image(input.image_after_return, {
+    required: true,
+    fieldName: "Foto pengembalian",
+  });
   return prisma.$transaction(async (tx) => {
     const borrow = await tx.assetBorrowed.findUnique({
       where: { id_asset_borrowed: id },
@@ -441,7 +445,7 @@ static async returnAsset(id: number,
     // 3) Update borrow record
     const updatedBorrow = await tx.assetBorrowed.update({
       where: { id_asset_borrowed: id },
-      data: { status: "DIKEMBALIKAN", returned_date: new Date(),late_days:lateDays,  image_after_return: input.image_after_return, },
+      data: { status: "DIKEMBALIKAN", returned_date: new Date(),late_days:lateDays,  image_after_return: validatedImage?.dataUrl, },
       include: { user: true },
     });
 
@@ -1079,6 +1083,190 @@ static async refreshBorrowLateStatusById(id: number, tx: any = prisma) {
       late_days: lateDays,
       status: newStatus,
     },
+  });
+}
+static async cancelBorrow(
+  actor_id: number,
+  id: number,
+  input?: {
+    cancel_note?: string;
+  }
+) {
+  return prisma.$transaction(async (tx) => {
+    const actor = await tx.user.findUnique({
+      where: { id_user: actor_id },
+      select: {
+        id_user: true,
+        name: true,
+        username: true,
+        role: true,
+        jabatan: true,
+        no_hp: true,
+      },
+    });
+
+    if (!actor) {
+      throw new Error("User login tidak ditemukan");
+    }
+
+    const borrow = await tx.assetBorrowed.findUnique({
+      where: { id_asset_borrowed: id },
+      include: {
+        user: {
+          select: {
+            id_user: true,
+            name: true,
+            username: true,
+            role: true,
+            jabatan: true,
+            no_hp: true,
+          },
+        },
+        assetStock: {
+          include: {
+            asset: {
+              select: {
+                id_assets: true,
+                asset_name: true,
+                asset_code: true,
+              },
+            },
+            location: {
+              select: {
+                id_location: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!borrow) {
+      throw new Error("Data peminjaman tidak ditemukan");
+    }
+
+    if (!["MENUNGGU_ADMIN", "MENUNGGU_BOS"].includes(borrow.status)) {
+      throw new Error("Peminjaman hanya bisa dibatalkan sebelum disetujui");
+    }
+
+    const isRequester = borrow.requested_by_id === actor_id;
+    const isBorrower = borrow.id_user === actor_id;
+    const isAdminOrBoss = actor.role === "ADMIN" || actor.role === "BOS";
+
+    if (!isRequester && !isBorrower && !isAdminOrBoss) {
+      throw new Error("Anda tidak punya akses untuk membatalkan peminjaman ini");
+    }
+
+    const previousStatus = borrow.status;
+
+    const updated = await tx.assetBorrowed.update({
+      where: { id_asset_borrowed: id },
+      data: {
+        status: "DIBATALKAN",
+        canceled_by_id: actor_id,
+        canceled_at: new Date(),
+        cancel_note: input?.cancel_note,
+      },
+      include: {
+        user: {
+          select: {
+            id_user: true,
+            name: true,
+            username: true,
+            role: true,
+            jabatan: true,
+            no_hp: true,
+          },
+        },
+        assetStock: {
+          include: {
+            asset: {
+              select: {
+                id_assets: true,
+                asset_name: true,
+                asset_code: true,
+              },
+            },
+            location: {
+              select: {
+                id_location: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    await createAssetLog(tx, {
+      action: "BORROW_CANCEL",
+      description: buildLogDescription({
+        title: "Request peminjaman dibatalkan",
+        detail: `Request peminjaman asset "${borrow.assetStock.asset.asset_name} (${borrow.assetStock.asset.asset_code})" qty ${borrow.quantity} dibatalkan oleh "${actor.name}"`,
+        meta: {
+          id_asset_borrowed: borrow.id_asset_borrowed,
+
+          canceled_by: {
+            id_user: actor.id_user,
+            name: actor.name,
+            username: actor.username,
+            role: actor.role,
+            jabatan: actor.jabatan,
+            no_hp: actor.no_hp,
+          },
+
+          borrower: borrow.user
+            ? {
+                id_user: borrow.user.id_user,
+                name: borrow.user.name,
+                username: borrow.user.username,
+                role: borrow.user.role,
+                jabatan: borrow.user.jabatan,
+                no_hp: borrow.user.no_hp,
+              }
+            : null,
+
+          asset: {
+            id_assets: borrow.assetStock.asset.id_assets,
+            asset_name: borrow.assetStock.asset.asset_name,
+            asset_code: borrow.assetStock.asset.asset_code,
+          },
+
+          stock: {
+            id_asset_stock: borrow.id_asset_stock,
+            id_location: borrow.assetStock.location?.id_location ?? null,
+            location_name: borrow.assetStock.location?.name ?? null,
+          },
+
+          quantity: borrow.quantity,
+
+          status: {
+            from: previousStatus,
+            to: updated.status,
+          },
+
+          approval_flow: {
+            requested_by_id: borrow.requested_by_id ?? null,
+            admin_approved_by_id: borrow.admin_approved_by_id ?? null,
+            admin_approved_at: borrow.admin_approved_at ?? null,
+            boss_approved_by_id: borrow.boss_approved_by_id ?? null,
+            boss_approved_at: borrow.boss_approved_at ?? null,
+          },
+
+          cancel: {
+            canceled_by_id: actor_id,
+            canceled_at: updated.canceled_at,
+            cancel_note: updated.cancel_note ?? null,
+          },
+
+          borrowed_date: borrow.borrowed_date,
+          due_date: borrow.due_date ?? null,
+        },
+      }),
+    });
+
+    return updated;
   });
 }
 
