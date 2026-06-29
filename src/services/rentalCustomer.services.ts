@@ -1,7 +1,7 @@
 import { prisma } from '../utils/prisma';
 import { createAssetLog,buildLogDescription} from '../utils/asset-logs';
 import { encrypt,decrypt } from "../utils/encryption";
-import { build } from 'bun';
+import { validateBase64Image } from "../utils/imageValidator";
 export class rentalCustomerService {
 
   static async getAll() {
@@ -28,14 +28,24 @@ export class rentalCustomerService {
     phone: string;
     pictureKtp?: string;
   }) {
+    const validatedKtp = validateBase64Image(input.pictureKtp, {
+    required: true,
+    fieldName: "Foto KTP",
+  });
+  
     return prisma.$transaction(async(tx) =>{
-     const encrypted = input.pictureKtp ? encrypt(input.pictureKtp) : undefined;
+     
+if (!validatedKtp) {
+    throw new Error("Foto KTP wajib diisi");
+  }
+
+   const encryptedKtp = encrypt(validatedKtp.dataUrl);
 
       const created = await tx.rentalCustomer.create({
         data:{
           name:input.name,
           phone:input.phone,
-          pictureKtp: encrypted ?? ""
+          pictureKtp: encryptedKtp ?? ""
         }
       })
       await createAssetLog(tx,{
@@ -46,7 +56,13 @@ export class rentalCustomerService {
           meta:{
             id_rental_customer:created.id_rental_customer,
             name:created.name,
-            phone:created.phone ?? null
+            phone:created.phone ?? null,
+             ktp: {
+            uploaded: true,
+            encrypted: true,
+            mimeType: validatedKtp.mimeType,
+            sizeMB: validatedKtp.sizeMB,
+          },
           }
         })
       })

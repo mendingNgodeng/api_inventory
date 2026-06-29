@@ -6,6 +6,7 @@ import {
   calculatePaymentStatus,
   calculateRentalDays,
 } from "../utils/rentalFine";
+import { validateBase64Image } from "../utils/imageValidator";
 
 export class assetRentalService {
   static async getAll() {
@@ -318,6 +319,10 @@ static async finishRental(
     image_after_rental?: string; 
   }
 ) {
+  const validatedReturnImage = validateBase64Image(input?.image_after_rental, {
+    required: true,
+    fieldName: "Foto pengembalian rental",
+  });
   return prisma.$transaction(async (tx) => {
     const rental = await tx.assetRental.findUnique({
       where: { id_asset_rental: id },
@@ -396,7 +401,7 @@ static async finishRental(
       where: { id_asset_rental: id },
       data: {
         status: "SELESAI",
-        image_after_rental: input?.image_after_rental ?? null,
+        image_after_rental: validatedReturnImage?.dataUrl ?? null,
         // returned_date: new Date(), // (opsional) kalau kamu mau isi returned_date di rental
       },
     });
