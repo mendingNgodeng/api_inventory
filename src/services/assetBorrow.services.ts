@@ -711,7 +711,7 @@ if (dueDate <= now) {
           id_user: borrowerId,
           id_asset_stock: input.id_asset_stock,
           quantity: input.quantity,
-          returned_date: "-",
+          returned_date: null,
           due_date: dueDate,
           status: "DIPINJAM",
           requested_by_id: actor_id,

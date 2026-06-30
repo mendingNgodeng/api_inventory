@@ -1,4 +1,5 @@
 import { prisma } from '../utils/prisma';
+import { userRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { generateToken,verifyToken } from '../utils/jwt';
 import { createAssetLog,buildLogDescription} from '../utils/asset-logs';
@@ -8,12 +9,27 @@ export class AuthService {
     username: string;
     name: string;
     password: string;
+    role:userRole; // since i add bos here
   }) {
           return prisma.$transaction(async(tx) => {
+
+             //  hanya ada 1 bos
+    const cekbos = await tx.user.findFirst({
+      where:{
+        role:"BOS"
+      }
+    }
+    )
+    const inputRole = data.role as string
+   if (cekbos && cekbos.role === inputRole) {
+  throw new Error('Data user dengan ROLE BOS sudah ada di database!');
+}
+    if (data.role == "KARYAWAN" ) throw new Error('Tidak Bisa mendaftarkan karyawan dari endpoint ini!');
+
             const {password} = data;
              const hashed = await bcrypt.hash(password, 10);
         const created = await tx.user.create(
-          {data:{...data,password:hashed, role:"ADMIN"}}
+          {data:{...data,password:hashed, role:data.role}}
         )
   
         await createAssetLog(tx,{
