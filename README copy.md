@@ -41,13 +41,11 @@
 
 - **Master data management** (categories, types, locations, assets)
 - **Physical stock tracking** per location, condition, and availability status
-- **Internal borrowing with approval flow** — KARYAWAN requests go through ADMIN and BOS approval
-- **Office asset usage** — ADMIN can directly assign stock for internal office use (`DIPAKAI`) without a borrower
-- **External rentals with fine calculation** — customer rentals with DP, remaining balance, late days, and fine tracking
-- **Maintenance management** — ADMIN can move damaged assets into maintenance and return them when done
-- **Return proof images** — borrow/rental returns can store after-return image evidence
+- **Internal borrowing** — employees borrow/use company assets
+- **External rentals** — outside customers rent assets with payment tracking (DP, remaining balance)
+- **Maintenance management** — track repair cycles, costs, and outcomes
 - **System-wide audit logs** — every mutating operation appends an immutable log entry
-- **Role-based access control** — ADMIN, KARYAWAN, and BOS
+- **Role-based access control** — ADMIN vs KARYAWAN
 
 ---
 
@@ -91,8 +89,6 @@ api_inventory/
 │   │   ├── hash.ts            # bcrypt helpers
 │   │   ├── asset-logs.ts      # createAssetLog + buildLogDescription utilities
 │   │   ├── encryption.ts      # KTP image encryption helpers
-│   │   ├── imageValidator.ts  # Base64 image validation helper
-│   │   ├── rentalFine.ts      # Rental duration, fine, and payment status helpers
 │   │   ├── clearPicture.ts    # File cleanup utility
 │   │   ├── history.ts         # History query helpers
 │   │   └── unique_validation.ts # Prisma uniqueness check helpers
@@ -189,19 +185,17 @@ erDiagram
         String no_hp
         String password
         userRole role
-        DateTime created_at
-        DateTime updated_at
     }
 
     AssetCategories {
         Int id_asset_categories PK
-        String name UK
+        String name
         String description
     }
 
     AssetTypes {
         Int id_asset_types PK
-        String name UK
+        String name
         String description
     }
 
@@ -214,13 +208,11 @@ erDiagram
         Float purchase_price
         Float rental_price
         Boolean is_rentable
-        DateTime created_at
-        DateTime updated_at
     }
 
     Location {
         Int id_location PK
-        String name UK
+        String name
         String description
     }
 
@@ -231,8 +223,6 @@ erDiagram
         AssetCondition condition
         AssetStockStatus status
         Int quantity
-        DateTime created_at
-        DateTime updated_at
     }
 
     AssetBorrowed {
@@ -241,23 +231,8 @@ erDiagram
         Int id_user FK
         Int quantity
         DateTime borrowed_date
-        DateTime due_date
         DateTime returned_date
-        Int late_days
-        String image_after_return
         BorrowStatus status
-        Int requested_by_id
-        Int admin_approved_by_id
-        DateTime admin_approved_at
-        Int boss_approved_by_id
-        DateTime boss_approved_at
-        Int rejected_by_id
-        DateTime rejected_at
-        String approval_note
-        Int canceled_by_id
-        DateTime canceled_at
-        String cancel_note
-        DateTime updated_at
     }
 
     RentalCustomer {
@@ -265,8 +240,6 @@ erDiagram
         String name
         String phone
         String pictureKtp
-        DateTime created_at
-        DateTime updated_at
     }
 
     AssetRental {
@@ -276,13 +249,9 @@ erDiagram
         Int quantity
         DateTime rental_start
         DateTime rental_end
-        DateTime returned_date
         Float price
-        String image_after_rental
         Float dp_amount
         Float remaining_amount
-        Int late_days
-        Float fine_amount
         PaymentStatus payment_status
         RentalStatus status
     }
@@ -290,11 +259,9 @@ erDiagram
     AssetMaintenance {
         Int id_asset_maintenance PK
         Int id_asset_stock FK
-        DateTime created_at
         String description
         Float cost
         Int quantity
-        DateTime updated_at
         MaintenanceStatus status
     }
 
@@ -309,7 +276,6 @@ erDiagram
         Int id PK
         String token UK
         DateTime expiredAt
-        DateTime createdAt
     }
 
     Asset }|--|| AssetCategories : "category"
@@ -327,10 +293,10 @@ erDiagram
 
 | Enum                | Values                                            |
 |---------------------|---------------------------------------------------|
-| `userRole`          | `ADMIN`, `KARYAWAN`, `BOS`                        |
+| `userRole`          | `ADMIN`, `KARYAWAN`                               |
 | `AssetCondition`    | `BAIK`, `RUSAK`                                   |
 | `AssetStockStatus`  | `TERSEDIA`, `TIDAK_TERSEDIA`, `MAINTENANCE`, `DIPINJAM`, `DIPAKAI`, `DISEWA` |
-| `BorrowStatus`      | `MENUNGGU_ADMIN`, `MENUNGGU_BOS`, `DIBATALKAN`, `DITOLAK`, `DIPAKAI`, `DIPINJAM`, `DIKEMBALIKAN`, `TERLAMBAT` |
+| `BorrowStatus`      | `DIPAKAI`, `DIPINJAM`, `DIKEMBALIKAN`, `TERLAMBAT`|
 | `RentalStatus`      | `AKTIF`, `SELESAI`, `DIBATALKAN`                  |
 | `PaymentStatus`     | `BELUM_BAYAR`, `DP`, `LUNAS`                      |
 | `MaintenanceStatus` | `ON_PROGRESS`, `DONE`                             |
@@ -352,12 +318,6 @@ Reads the `Authorization: Bearer <token>` header.
 
 Checks the decoded `user.role` against an allowlist.  
 → Returns **403 Forbidden** if role is not in the list.
-
-Current active roles:
-
-- `ADMIN` — manages master data, stock, rental, maintenance, and first-level borrow approval
-- `KARYAWAN` — can request asset borrowing and return borrowed assets
-- `BOS` — final borrow approver and can perform direct borrowing
 
 ### `requireSelfOrAdmin`
 
@@ -390,9 +350,7 @@ If `false`, the `/auth/register` endpoint returns 403.
 > - 🔒 = requires `authMiddleware`
 > - 👑 = requires `requireRole("ADMIN")`
 > - 🧑 = requires `requireSelfOrAdmin`
-> - 🔑 = requires `requireRole("KARYAWAN","ADMIN","BOS")`
-> - 🧾 = requires `requireRole("ADMIN","BOS")`
-> - 🏁 = requires `requireRole("BOS")`
+> - 🔑 = requires `requireRole("KARYAWAN","ADMIN")`
 
 All responses follow the pattern:
 ```json
@@ -514,101 +472,26 @@ Physical instances of assets, uniquely identified by `(asset, location, conditio
 
 ### 8.8 Asset Borrow — `/assetBorrow`
 
-Handles internal asset borrowing, office usage, approval flow, rejection, cancellation, and returns.
+Handles internal asset usage by employees. Two creation modes: **borrow** (the item leaves temporarily) and **used** (the item is assigned for ongoing use).
 
-Borrow modes:
+| Method | Endpoint                 | Middleware                | Description                                                  |
+|--------|--------------------------|---------------------------|--------------------------------------------------------------|
+| GET    | `/assetBorrow`           | 🔒 🔑 `rateLimit`         | List all borrow/used records (KARYAWAN or ADMIN)             |
+| GET    | `/assetBorrow/:id`       | 🔒 🧑 `rateLimit`         | Get single record (self or admin)                            |
+| POST   | `/assetBorrow/used`      | 🔒 👑 `rateLimit`         | Assign stock as **in-use** (ADMIN only) → logs `USED_CREATE`|
+| POST   | `/assetBorrow/borrow`    | 🔒 🔑 `rateLimit`         | Borrow stock (KARYAWAN or ADMIN) → logs `BORROW_CREATE`     |
+| PUT    | `/assetBorrow/:id/return`| 🔒 `rateLimit`            | Return a borrowed/used asset → logs `BORROW_RETURN` or `USED_RETURN` |
+| DELETE | `/assetBorrow/:id`       | 🔒 `rateLimit`            | Delete a borrow record                                       |
 
-- **KARYAWAN request** → starts as `MENUNGGU_ADMIN`
-- **ADMIN request** → starts as `MENUNGGU_BOS`
-- **BOS direct borrow** → directly becomes `DIPINJAM`
-- **Office usage** → ADMIN directly creates `DIPAKAI` record with `id_user = null`
-
-| Method | Endpoint                       | Middleware                | Description |
-|--------|--------------------------------|---------------------------|-------------|
-| GET    | `/assetBorrow`                 | 🔒 🔑 `rateLimit`         | List borrow/used records |
-| GET    | `/assetBorrow/:id`             | 🔒 `rateLimit`            | Get single borrow/used record |
-| POST   | `/assetBorrow/used`            | 🔒 👑 `rateLimit`         | Assign stock as office usage (`DIPAKAI`) → logs `USED_CREATE` |
-| POST   | `/assetBorrow/borrow`          | 🔒 🔑 `rateLimit`         | Create borrow request/direct borrow based on role |
-| PUT    | `/assetBorrow/:id/approve-admin` | 🔒 👑 `rateLimit`       | ADMIN approval: `MENUNGGU_ADMIN` → `MENUNGGU_BOS` |
-| PUT    | `/assetBorrow/:id/approve-boss`  | 🔒 🏁 `rateLimit`       | BOS approval: `MENUNGGU_BOS` → `DIPINJAM`, then stock is moved |
-| PUT    | `/assetBorrow/:id/reject`      | 🔒 🧾 `rateLimit`         | Reject pending borrow request → `DITOLAK` |
-| PUT    | `/assetBorrow/:id/cancel`      | 🔒 🔑 `rateLimit`         | Cancel pending borrow request → `DIBATALKAN` |
-| PUT    | `/assetBorrow/:id/return`      | 🔒 🔑 `rateLimit`         | Return borrowed/used asset with after-return image |
-| DELETE | `/assetBorrow/:id`             | 🔒 `rateLimit`            | Delete a borrow record |
-
-**Borrow request body:**
-```json
-{
-  "id_asset_stock": 1,
-  "borrower_id": 2,
-  "quantity": 1,
-  "due_date": "2026-07-02T09:00:00.000Z"
-}
+**Borrow Flow:**
 ```
-
-`borrower_id` is optional. KARYAWAN can only borrow for themselves. ADMIN/BOS can borrow for another user when allowed by the UI/business rule.
-
-**Return request body:**
-```json
-{
-  "image_after_return": "data:image/jpeg;base64,..."
-}
-```
-
-**Reject / Cancel body:**
-```json
-{
-  "approval_note": "Reason for rejection"
-}
-```
-
-```json
-{
-  "cancel_note": "Reason for cancellation"
-}
-```
-
-**Approval Flow:**
-```
-KARYAWAN:
 POST /assetBorrow/borrow
-→ Creates AssetBorrowed status = MENUNGGU_ADMIN
-→ Stock is NOT reduced yet
-→ ADMIN approve
-→ status = MENUNGGU_BOS
-→ BOS approve
-→ status = DIPINJAM
-→ Stock TERSEDIA is moved to DIPINJAM
+→ Validates stock availability
+→ Reduces stock quantity / updates status to DIPINJAM (or DIPAKAI for /used)
+→ Creates AssetBorrowed record
+→ Logs event (within transaction)
 
-ADMIN:
-POST /assetBorrow/borrow
-→ Creates AssetBorrowed status = MENUNGGU_BOS
-→ Stock is NOT reduced yet
-→ BOS approve
-→ status = DIPINJAM
-→ Stock TERSEDIA is moved to DIPINJAM
-
-BOS:
-POST /assetBorrow/borrow
-→ Creates AssetBorrowed status = DIPINJAM
-→ Stock TERSEDIA is moved immediately to DIPINJAM
-```
-
-**Office Usage Flow:**
-```
-POST /assetBorrow/used
-→ ADMIN selects available stock and quantity
-→ Creates AssetBorrowed status = DIPAKAI
-→ id_user is null
-→ Stock TERSEDIA is moved to DIPAKAI
-→ Logs USED_CREATE
-```
-
-**Return Flow:**
-```
 PUT /assetBorrow/:id/return
-→ Requires image_after_return
-→ Validates image format and size
 → Restores stock status to TERSEDIA
 → Updates returned_date + status = DIKEMBALIKAN
 → Logs BORROW_RETURN / USED_RETURN
@@ -618,93 +501,42 @@ PUT /assetBorrow/:id/return
 
 ### 8.9 Asset Rental — `/assetRental`
 
-Handles external customer rentals with financial tracking, payment updates, late-day calculation, and automatic fine calculation.
+Handles external customer rentals with financial tracking.
 
-| Method | Endpoint                         | Middleware         | Description |
-|--------|----------------------------------|--------------------|-------------|
-| GET    | `/assetRental`                   | 🔒 `rateLimit`     | List all rental records; active rentals may refresh fine values |
-| GET    | `/assetRental/:id`               | 🔒 `rateLimit`     | Get rental by ID; active rental may refresh fine values |
-| POST   | `/assetRental`                   | 🔒 `rateLimit`     | Create rental → logs `RENTAL_CREATE` |
-| PUT    | `/assetRental/:id/update-date-end` | 🔒 `rateLimit`   | Update rental end date and recalculate rental price/fine/payment |
-| PUT    | `/assetRental/:id/finish`        | 🔒 `rateLimit`     | Mark rental as finished with after-rental image → logs `RENTAL_FINISH` |
-| PUT    | `/assetRental/:id/pay`           | 🔒 `rateLimit`     | Record a payment → refreshes fine first → logs `RENTAL_PAYMENT` |
-| PUT    | `/assetRental/:id/cancel`        | 🔒 `rateLimit`     | Cancel rental → logs `RENTAL_CANCEL` |
+| Method | Endpoint                    | Middleware         | Description                                        |
+|--------|-----------------------------|--------------------|----------------------------------------------------|
+| GET    | `/assetRental`              | 🔒 `rateLimit`     | List all rental records                            |
+| GET    | `/assetRental/:id`          | 🔒 `rateLimit`     | Get rental by ID                                   |
+| POST   | `/assetRental`              | 🔒 `rateLimit`     | Create rental → logs `RENTAL_CREATE`               |
+| PUT    | `/assetRental/:id/finish`   | 🔒 `rateLimit`     | Mark rental as finished → logs `RENTAL_FINISH`     |
+| PUT    | `/assetRental/:id/pay`      | 🔒 `rateLimit`     | Record a payment → logs `RENTAL_PAYMENT`           |
+| PUT    | `/assetRental/:id/cancel`   | 🔒 `rateLimit`     | Cancel rental → logs `RENTAL_CANCEL`               |
 
-> **Note:** DELETE endpoints for rentals are currently commented out.
-
-**Create rental body:**
-```json
-{
-  "id_rental_customer": 1,
-  "id_asset_stock": 1,
-  "quantity": 1,
-  "rental_start": "2026-07-01T09:00:00.000Z",
-  "rental_end": "2026-07-03T09:00:00.000Z",
-  "dp_amount": 50000
-}
-```
-
-**Update end date body:**
-```json
-{
-  "rental_end": "2026-07-05T09:00:00.000Z"
-}
-```
-
-**Payment body:**
-```json
-{
-  "payment_amount": 50000,
-  "payment_note": "Pelunasan sebagian"
-}
-```
-
-**Finish rental body:**
-```json
-{
-  "image_after_rental": "data:image/jpeg;base64,..."
-}
-```
+> **Note:** DELETE endpoints for rentals are currently commented out (non-active rentals only).
 
 **Rental Flow:**
 ```
 POST /assetRental
 → Validates rental_start < rental_end
 → Checks stock is_rentable + availability
-→ Calculates rental days and price
 → Stock status → DISEWA
 → Sets price, dp_amount, remaining_amount, payment_status
 → Logs RENTAL_CREATE
-```
 
-**Fine Calculation Flow:**
-```
-GET /assetRental or GET /assetRental/:id
-→ Active rentals are checked
-→ rental_end is compared with current server time
-→ If overdue, late_days and fine_amount are recalculated
-→ remaining_amount and payment_status are updated
-```
-
-**Payment Flow:**
-```
 PUT /assetRental/:id/pay
-→ Refreshes rental fine first
-→ Validates payment_amount > 0
-→ Rejects payment_amount greater than remaining_amount
 → Updates dp_amount / remaining_amount
 → Updates payment_status (BELUM_BAYAR → DP → LUNAS)
 → Logs RENTAL_PAYMENT
-```
 
-**Finish Flow:**
-```
 PUT /assetRental/:id/finish
-→ Requires image_after_rental
-→ Validates image format and size
 → Sets status = SELESAI, returned_date = now
-→ Stock DISEWA is returned to TERSEDIA
+→ Stock status → TERSEDIA (or RUSAK based on image_after_rental)
 → Logs RENTAL_FINISH
+
+PUT /assetRental/:id/cancel
+→ Sets status = DIBATALKAN
+→ Stock status → TERSEDIA
+→ Logs RENTAL_CANCEL
 ```
 
 ---
@@ -721,7 +553,7 @@ Manages profiles of external customers who rent assets.
 | PUT    | `/rentalCustomer/:id`    | 🔒 `rateLimit`     | Update customer → logs `RENTAL_CUSTOMER_UPDATE` |
 | DELETE | `/rentalCustomer/:id`    | 🔒 `rateLimit`     | Delete customer → logs `RENTAL_CUSTOMER_DELETE` |
 
-> KTP photo is validated as a base64 image before encryption. The encrypted value is stored in `pictureKtp` using `encryption.ts`.
+> KTP photo is stored encrypted via `encryption.ts`. The field `pictureKtp` holds the encrypted value.
 
 ---
 
@@ -740,14 +572,13 @@ Tracks asset repair cycles with status and cost tracking.
 **Maintenance Flow:**
 ```
 POST /assetMaintenance
-→ ADMIN selects available stock and quantity
-→ Stock TERSEDIA is reduced / moved to MAINTENANCE
+→ Stock status → MAINTENANCE
 → Creates AssetMaintenance record (status = ON_PROGRESS)
 → Logs MAINTENANCE_CREATE
 
 PUT /assetMaintenance/:id/return
 → Maintenance status → DONE
-→ Stock is returned to TERSEDIA
+→ Stock status → TERSEDIA (or RUSAK, depending on final condition)
 → Logs MAINTENANCE_DONE
 ```
 
@@ -803,7 +634,7 @@ Every mutating operation emits one of these typed action strings to `AssetLogs`:
 | **Location**      | `LOCATION_CREATE`, `LOCATION_UPDATE`, `LOCATION_DELETE`             |
 | **User**          | `USER(KARYAWAN)_CREATE`, `USER(KARYAWAN)_UPDATE`, `USER(KARYAWAN)_DELETE` |
 | **Rental Customer**| `RENTAL_CUSTOMER_CREATE`, `RENTAL_CUSTOMER_UPDATE`, `RENTAL_CUSTOMER_DELETE` |
-| **Borrow**        | `BORROW_REQUEST`, `BORROW_APPROVE_ADMIN`, `BORROW_APPROVE_BOSS`, `BORROW_REJECT`, `BORROW_CANCEL`, `BORROW_RETURN`, `USED_CREATE`, `USED_RETURN` |
+| **Borrow**        | `BORROW_CREATE`, `BORROW_RETURN`, `USED_CREATE`, `USED_RETURN`      |
 | **Rental**        | `RENTAL_CREATE`, `RENTAL_FINISH`, `RENTAL_PAYMENT`, `RENTAL_CANCEL` |
 | **Maintenance**   | `MAINTENANCE_CREATE`, `MAINTENANCE_DONE`                            |
 | **Other**         | `STOCK_UPDATE`, `STOCK_MOVE`, `DELETE_HISTORY`, `OTHER`             |
@@ -858,11 +689,8 @@ Copy `.env.example` to `.env` and fill in:
 | `PORT`            | Server port (default: `3000`)                         |
 | `JWT_SECRET`      | Secret key for signing JWTs                           |
 | `TokenExpired`    | JWT expiry in seconds (default: `3600` = 1 hour)     |
-| `KTP_SECRET_KEY`  | Secret key for encrypting KTP photo data              |
+| `KTP_SECRET_KEY`  | 32-byte key for encrypting KTP photo data             |
 | `ENABLE_REGISTER` | `true`/`false` — enables the `/auth/register` route   |
-| `IMAGE_UPLOAD_MAX_MB` | Max accepted image size for KTP / return proof images |
-| `SET_HARGA_DENDA` | `true`/`false` — use fixed fine price when enabled |
-| `HARGA_DENDA` | Fixed fine amount per late day when `SET_HARGA_DENDA=true` |
 
 ### Rate Limit — Global
 
